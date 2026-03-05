@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Line Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #1a252f; 
+            color: white; 
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #2c3e50;
+            border-radius: 10px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .station-card {
+            background: #34495e;
+            border-radius: 12px;
+            padding: 20px;
+            border: 3px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .station-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .station-card.status-GREEN { border-color: #2ecc71; }
+        .station-card.status-YELLOW { border-color: #f1c40f; }
+        .station-card.status-RED { border-color: #e74c3c; }
+        .station-card.status-BLUE { border-color: #3498db; }
+        .station-card.status-GRAY { border-color: #7f8c8d; background: #2c3e50; }
+        
+        .station-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .station-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-indicator.GREEN { background: #2ecc71; }
+        .status-indicator.YELLOW { background: #f1c40f; }
+        .status-indicator.RED { background: #e74c3c; }
+        .status-indicator.BLUE { background: #3498db; }
+        .status-indicator.GRAY { background: #7f8c8d; }
+        
+        .truck-image-container {
+            width: 100%;
+            height: 180px;
+            background: #2c3e50;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .truck-image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .truck-image-container .no-image {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .truck-info {
+            margin-bottom: 15px;
+        }
+        .truck-vin {
+            font-family: monospace;
+            font-size: 1.1em;
+            color: #3498db;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .truck-name {
+            font-size: 0.9em;
+            color: #bdc3c7;
+            margin-bottom: 10px;
+        }
+        
+        .worker-info {
+            background: #2c3e50;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .worker-label {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .worker-name {
+            font-size: 1.1em;
+            color: #ecf0f1;
+        }
+        .worker-name.empty {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .progress-section {
+            margin-top: 15px;
+        }
+        .progress-label {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #2c3e50;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+        .progress-fill.GREEN { background: #2ecc71; }
+        .progress-fill.YELLOW { background: #f1c40f; }
+        .progress-fill.RED { background: #e74c3c; }
+        .progress-fill.BLUE { background: #3498db; }
+        .progress-fill.GRAY { background: #7f8c8d; }
+        
+        .empty-station {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+        .empty-station-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .refresh-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2c3e50;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏭 Production Line Dashboard</h1>
+        <p>Real-time status of all work stations</p>
+    </div>
+    
+    <div class="refresh-indicator" id="refresh-indicator">
+        Last updated: <span id="last-update">Loading...</span>
+    </div>
+    
+    <div class="dashboard-grid" id="dashboard-grid">
+        <!-- Stations will be loaded here -->
+    </div>
+
+    <script>
+        function formatTime(date) {
+            return date.toLocaleTimeString();
+        }
+        
+        function renderDashboard(data) {
+            const grid = document.getElementById('dashboard-grid');
+            const stations = data.stations || [];
+            
+            if (stations.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #7f8c8d;">No active stations found</div>';
+                return;
+            }
+            
+            grid.innerHTML = stations.map(station => {
+                const isEmpty = station.status === 'empty';
+                const statusColor = station.status_color || 'GRAY';
+                
+                if (isEmpty) {
+                    return `
+                        <div class="station-card status-${statusColor}" onclick="window.location.href='/station/${station.station_slug}/'">
+                            <div class="station-header">
+                                <div class="station-name">${station.station_name}</div>
+                                <span class="status-indicator ${statusColor}"></span>
+                            </div>
+                            <div class="empty-station">
+                                <div class="empty-station-icon">🚛</div>
+                                <div>No Truck Assigned</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                const workerDisplay = station.current_worker 
+                    ? `<div class="worker-name">${station.current_worker}</div>`
+                    : `<div class="worker-name empty">No active worker</div>`;
+                
+                const imageDisplay = station.truck_image_url
+                    ? `<img src="${station.truck_image_url}" alt="${station.truck_name}" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No Image</div>'">`
+                    : `<div class="no-image">No Image Available</div>`;
+                
+                return `
+                    <div class="station-card status-${statusColor}" onclick="window.location.href='/station/${station.station_slug}/'">
+                        <div class="station-header">
+                            <div class="station-name">${station.station_name}</div>
+                            <span class="status-indicator ${statusColor}"></span>
+                        </div>
+                        
+                        <div class="truck-image-container">
+                            ${imageDisplay}
+                        </div>
+                        
+                        <div class="truck-info">
+                            <div class="truck-vin">VIN: ${station.truck_serial_number || 'N/A'}</div>
+                            <div class="truck-name">${station.truck_name || ''}</div>
+                        </div>
+                        
+                        <div class="worker-info">
+                            <div class="worker-label">Current Worker</div>
+                            ${workerDisplay}
+                        </div>
+                        
+                        <div class="progress-section">
+                            <div class="progress-label">
+                                <span>Current task</span>
+                                <span>${Math.round(station.progress_percent || 0)}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill ${station.current_task_color || statusColor}" style="width: ${Math.min(100, station.progress_percent || 0)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function loadDashboard() {
+            fetch('/api/dashboard/')
+                .then(r => r.json())
+                .then(data => {
+                    renderDashboard(data);
+                    document.getElementById('last-update').textContent = formatTime(new Date());
+                })
+                .catch(err => {
+                    console.error('Error loading dashboard:', err);
+                    document.getElementById('last-update').textContent = 'Error loading data';
+                });
+        }
+        
+        // Load dashboard immediately and refresh every 5 seconds
+        loadDashboard();
+        setInterval(loadDashboard, 5000);
+    </script>
+</body>
+</html>

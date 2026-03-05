@@ -1,0 +1,41 @@
+services:
+  # 1. The Database (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=factory_db
+      - POSTGRES_USER=factory_admin
+      - POSTGRES_PASSWORD=factory_secret_password
+    ports:
+      - "5432:5432"  # Exposed so you can check DB from Windows tools if needed
+
+  # 2. The Cache/Message Broker (Redis)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # 3. The Web Server (Django)
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      # CRITICAL: This maps your Windows folder to the Docker container.
+      # Changes you make in VS Code appear instantly in the container.
+      - ./backend:/app
+    ports:
+      - "0.0.0.0:8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=dev_secret_key_123
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,[::1],*
+      - DATABASE_URL=postgres://factory_admin:factory_secret_password@db:5432/factory_db
+      - REDIS_URL=redis://redis:6379/0
+
+volumes:
+  postgres_data:

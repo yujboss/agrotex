@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Производственная информация - ООО «AGROMAX TECHNIC»</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .table-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+        .header-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header-info h2 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .header-info p {
+            margin: 0;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        /* Align model names to the left for better readability */
+        td:nth-child(2) {
+            text-align: left;
+            font-weight: 500;
+        }
+        th {
+            background-color: #2980b9;
+            color: #ffffff;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+        tbody tr:hover {
+            background-color: #f1f8ff;
+            transition: background-color 0.2s ease-in;
+        }
+        /* Highlight rows with pending items */
+        .pending {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        /* Style for the Total (Жами) row */
+        tfoot {
+            background-color: #ecf0f1;
+            font-weight: bold;
+        }
+        tfoot td {
+            border-top: 2px solid #2980b9;
+            border-bottom: none;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+
+<div class="table-container">
+    <div class="header-info">
+        <h2>Производственная информация по моделям тракторов <br> ООО «AGROMAX TECHNIC»</h2>
+        <p>Единица измерения: шт.</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Модели тракторов</th>
+                <th>Мощность (л.с.)</th>
+                <th>Кол-во тракторо-комплектов</th>
+                <th>Кол-во собранных</th>
+                <th>Разница</th>
+                <th>Такт сборки</th>
+                <th>Факт на 21.02.2026</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>Беларус № 80.1 (модерн)</td>
+                <td>81</td>
+                <td>90</td>
+                <td>90</td>
+                <td>0</td>
+                <td>10</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Беларус № 80Х</td>
+                <td>80</td>
+                <td>150</td>
+                <td>1</td>
+                <td class="pending">149</td>
+                <td>10</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Беларус № 82.1 (балка)</td>
+                <td>81</td>
+                <td>100</td>
+                <td>60</td>
+                <td class="pending">40</td>
+                <td>10</td>
+                <td>10</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Беларус № 892</td>
+                <td>89</td>
+                <td>44</td>
+                <td>44</td>
+                <td>0</td>
+                <td>10</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Беларус № 892.2</td>
+                <td>89</td>
+                <td>136</td>
+                <td>136</td>
+                <td>0</td>
+                <td>10</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Беларус № 952.2</td>
+                <td>89</td>
+                <td>138</td>
+                <td>138</td>
+                <td>0</td>
+                <td>10</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>Беларус № 80.1 TK</td>
+                <td>84</td>
+                <td>30</td>
+                <td>1</td>
+                <td class="pending">29</td>
+                <td>10</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>Беларус № 1025.2</td>
+                <td>107</td>
+                <td>133</td>
+                <td>125</td>
+                <td class="pending">8</td>
+                <td>10</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td>Беларус № 1221.2</td>
+                <td>130</td>
+                <td>96</td>
+                <td>96</td>
+                <td>0</td>
+                <td>8</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td>Беларус № 1222.3</td>
+                <td>136</td>
+                <td>181</td>
+                <td>157</td>
+                <td class="pending">24</td>
+                <td>8</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>11</td>
+                <td>Беларус № 1523</td>
+                <td>148</td>
+                <td>200</td>
+                <td>90</td>
+                <td class="pending">110</td>
+                <td>8</td>
+                <td></td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" style="text-align: right;">Жами:</td>
+                <td>1114</td>
+                <td>1298</td>
+                <td>938</td>
+                <td>360</td>
+                <td></td>
+                <td>10</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ station.name }} - MES</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #2c3e50; margin: 0; color: white; overflow: hidden; }
+        
+        /* Layout */
+        .header { background: #1a252f; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; }
+        .main-grid { display: grid; grid-template-columns: 250px 1fr 350px; height: calc(100vh - 60px); }
+        
+        /* Columns */
+        .col-users { background: #34495e; padding: 10px; border-right: 1px solid #2c3e50; display: flex; flex-direction: column; }
+        .col-active { background: #ecf0f1; color: #333; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .col-list { background: #2c3e50; overflow-y: auto; padding: 0; }
+        
+        /* Truck Info Section */
+        .truck-info { margin-top: 20px; padding-top: 20px; border-top: 2px solid #2c3e50; }
+        .truck-info-title { font-size: 0.9em; color: #bdc3c7; margin-bottom: 10px; text-transform: uppercase; }
+        .truck-image { width: 100%; max-width: 200px; border-radius: 8px; margin-bottom: 10px; border: 2px solid #2c3e50; }
+        .truck-vin { background: #2c3e50; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.9em; color: #3498db; text-align: center; word-break: break-all; }
+
+        /* Components */
+        .user-btn { display: block; width: 100%; padding: 15px; margin-bottom: 10px; background: #2c3e50; color: #bdc3c7; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 1.1em; cursor: pointer; text-align: left; }
+        .user-btn.active { background: #3498db; color: white; border-color: #3498db; }
+        .user-btn.brigadir { border-color: #e74c3c; color: #e74c3c; }
+        
+        /* Task List */
+        .category-header { background: #1a252f; padding: 10px; font-weight: bold; color: #bdc3c7; text-transform: uppercase; font-size: 0.9em; position: sticky; top: 0; }
+        .task-item { padding: 8px 15px; border-bottom: 1px solid #34495e; cursor: pointer; }
+        .task-item:hover { background: #34495e; }
+        .task-item.active { background: #3498db; color: white; }
+        
+        .task-grid {
+            display: grid;
+            grid-template-columns: 30px 2fr 1fr 1fr auto;
+            align-items: center;
+            gap: 10px;
+        }
+        .task-grid span {
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        
+        /* Status Colors */
+        .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; }
+        .dot-GREEN { background: #2ecc71; }
+        .dot-YELLOW { background: #f1c40f; }
+        .dot-RED { background: #e74c3c; }
+        .dot-PENDING { background: #7f8c8d; }
+
+        /* Big Active Screen */
+        .big-step { font-size: 3em; font-weight: bold; margin: 20px 0; }
+        .timer-box { font-size: 4em; font-family: monospace; font-weight: bold; color: #2c3e50; }
+        .progress-bar { width: 100%; height: 30px; background: #bdc3c7; border-radius: 15px; overflow: hidden; margin-top: 20px; }
+        .progress-fill { height: 100%; width: 0%; background: #27ae60; transition: width 0.2s; }
+
+        /* Header Progress */
+        .header-progress-bar {
+            flex-grow: 1;
+            height: 20px;
+            background-color: #34495e;
+            border-radius: 10px;
+            margin: 0 20px;
+            overflow: hidden;
+        }
+        .header-progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #27ae60;
+            transition: width 0.5s ease-in-out;
+        }
+
+
+        /* Reset Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; color: black; padding: 30px; border-radius: 10px; text-align: center; }
+        .pin-input { font-size: 2em; width: 150px; text-align: center; padding: 10px; margin: 10px; letter-spacing: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>{{ station.name }}</div>
+        <div class="header-progress-bar">
+            <div id="header-progress" class="header-progress-fill"></div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'production_dashboard' %}" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; text-decoration: none;">📊 Dashboard</a>
+            <button onclick="showResetModal()" style="background: #c0392b; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">🛑 RESET TRUCK</button>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <div class="col-users">
+            <div id="user-list"></div>
+            <div class="truck-info" id="truck-info">
+                <div class="truck-info-title">Current Truck</div>
+                <div id="truck-image-container">
+                    {% if product and product.image %}
+                        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="truck-image" onerror="this.style.display='none';">
+                    {% else %}
+                        <div style="width: 100%; height: 120px; background: #2c3e50; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #7f8c8d;">No Image</div>
+                    {% endif %}
+                </div>
+                <div class="truck-vin" id="truck-vin">{% if truck_serial_number %}{{ truck_serial_number }}{% else %}-{% endif %}</div>
+            </div>
+        </div>
+
+        <div class="col-active">
+            <div style="font-size: 1.2em; color: #7f8c8d;">CURRENT TASK</div>
+            <div class="big-step" id="active-desc">WAITING...</div>
+            <div class="timer-box" id="timer">00:00</div>
+            <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+            <div style="margin-top: 20px; color: #7f8c8d;">Press SPACE to Complete</div>
+            <button type="button" id="complete-task-btn" onclick="completeCurrentTask(event)" style="margin-top: 15px; padding: 18px 40px; font-size: 1.3em; background: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">✓ Complete Task</button>
+        </div>
+
+        <div class="col-list" id="task-list">
+            </div>
+    </div>
+
+    <div id="resetModal" class="modal">
+        <div class="modal-content">
+            <h2>🔐 BRIGADIER RESET</h2>
+            <p>Enter PIN to reset truck progress:</p>
+            <input type="password" id="pinInput" class="pin-input" maxlength="4" placeholder="****">
+            <br><br>
+            <button onclick="confirmReset()" style="padding: 10px 30px; background: #c0392b; color: white; border: none; font-size: 1.2em;">RESET</button>
+            <button onclick="closeModal()" style="padding: 10px 30px;">CANCEL</button>
+        </div>
+    </div>
+
+    <script>
+        const STATION_SLUG = "{{ station.slug }}";
+        let currentUser = null;
+        let activeTaskDuration = 300;
+        let timerStart = null;
+        let timerInt = null;
+
+        // --- INIT ---
+        function loadData() {
+            fetch(`/api/station/${STATION_SLUG}/data/`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'no_truck') {
+                    window.location.href = "{% url 'truck_selection' %}";
+                    return;
+                }
+                renderUsers(data.workers);
+                renderTasks(data.tasks);
+                renderTruckInfo(data);
+                updateHeaderProgress(data.progress_percent, data.is_late, data.is_very_late);
+                
+                // Auto-select first user if none
+                if (!currentUser && data.workers.length > 0) selectUser(data.workers[0].badge_id);
+            });
+        }
+        setInterval(loadData, 5000); // Poll every 5s for updates from other users
+        loadData();
+
+        // --- RENDERING ---
+        function renderUsers(workers) {
+            const container = document.getElementById('user-list');
+            // Keep current user selection visual
+            container.innerHTML = workers.map(w => `
+                <button onclick="selectUser('${w.badge_id}')" 
+                        class="user-btn ${w.role === 'BRIGADIR' ? 'brigadir' : ''} ${currentUser === w.badge_id ? 'active' : ''}">
+                    👤 ${w.name}<br>
+                    <small>${w.badge_id}</small>
+                </button>
+            `).join('');
+        }
+        
+        function renderTruckInfo(data) {
+            const vinContainer = document.getElementById('truck-vin');
+            const imageContainer = document.getElementById('truck-image-container');
+            
+            if (data.truck_serial_number) {
+                vinContainer.textContent = data.truck_serial_number;
+            } else {
+                vinContainer.textContent = '-';
+            }
+            
+            if (data.truck_image_url) {
+                imageContainer.innerHTML = `<img src="${data.truck_image_url}" alt="${data.truck_name || 'Truck'}" class="truck-image" onerror="this.style.display='none';">`;
+            } else {
+                imageContainer.innerHTML = '<div style="width: 100%; height: 120px; background: #2c3e50; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #7f8c8d;">No Image</div>';
+            }
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds === null) return '-';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('task-list');
+            let html = '';
+            let currentCat = '';
+
+            html += `<div class="category-header task-grid" style="padding-left: 15px; padding-right: 15px;">
+                        <span>#</span><span>Operator</span><span>Actual</span><span>Standard</span><span></span>
+                    </div>`;
+            
+            tasks.forEach(task => {
+                if (task.category !== currentCat) {
+                    html += `<div class="category-header">${task.category}</div>`;
+                    currentCat = task.category;
+                }
+                
+                const isRunning = task.status === 'IN_PROGRESS';
+                if (isRunning) updateActiveScreen(task);
+
+                html += `
+                    <div class="task-item ${isRunning ? 'active' : ''}" onclick="manualSelect(${task.id})">
+                        <div class="task-grid">
+                            <span>${task.step_number}</span>
+                            <span>${task.operator_id || '-'}</span>
+                            <span>${formatTime(task.completion_time)}</span>
+                            <span>${formatTime(task.standard_time)}</span>
+                            <span class="status-dot dot-${task.color || 'PENDING'}"></span>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateHeaderProgress(percent, is_late, is_very_late) {
+            const bar = document.getElementById('header-progress');
+            bar.style.width = percent + '%';
+            if (is_very_late) {
+                bar.style.backgroundColor = '#e74c3c';
+            } else if (is_late) {
+                bar.style.backgroundColor = '#f1c40f';
+            } else {
+                bar.style.backgroundColor = '#27ae60';
+            }
+        }
+
+        function updateActiveScreen(task) {
+            document.getElementById('active-desc').innerText = task.description;
+            activeTaskDuration = task.standard_time;
+            if (!timerInt) startTimer(); // Only start local timer if not running
+        }
+
+        // --- ACTIONS ---
+        function selectUser(id) {
+            currentUser = id;
+            loadData(); // Re-render to show active state
+        }
+
+        function manualSelect(taskId) {
+            if (!currentUser) return alert("Select a user first!");
+            fetch(`/api/station/${STATION_SLUG}/select/`, {
+                method: 'POST', 
+                body: JSON.stringify({step_id: taskId, worker_id: currentUser})
+            }).then(() => {
+                loadData();
+                resetTimer();
+            });
+        }
+
+        function resetTimer() {
+            clearInterval(timerInt);
+            timerInt = null;
+            document.getElementById('progress').style.width = '0%';
+        }
+
+        function startTimer() {
+            timerStart = Date.now();
+            timerInt = setInterval(() => {
+                const elapsed = (Date.now() - timerStart) / 1000;
+                const pct = Math.min((elapsed / activeTaskDuration) * 100, 100);
+                document.getElementById('progress').style.width = pct + '%';
+                
+                // Color logic
+                const bar = document.getElementById('progress');
+                if(pct < 50) bar.style.backgroundColor = '#27ae60';
+                else if(pct < 80) bar.style.backgroundColor = '#f1c40f';
+                else bar.style.backgroundColor = '#e74c3c';
+                
+                // Time Text
+                const mins = Math.floor(elapsed / 60);
+                const secs = Math.floor(elapsed % 60);
+                document.getElementById('timer').innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
+            }, 100);
+        }
+
+        // --- RESET LOGIC ---
+        function showResetModal() { document.getElementById('resetModal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('resetModal').style.display = 'none'; }
+        
+        function confirmReset() {
+            const pin = document.getElementById('pinInput').value;
+            fetch(`/api/station/${STATION_SLUG}/reset/`, {
+                method: 'POST',
+                body: JSON.stringify({pin: pin})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal();
+                    loadData();
+                    resetTimer();
+                    document.getElementById('active-desc').innerText = "TRUCK RESET";
+                } else {
+                    alert("WRONG PIN!");
+                }
+            });
+        }
+        
+        // --- COMPLETE TASK (SPACE or button for touch screens) — same behavior: start first task if WAITING, else complete current and go to next ---
+        function completeCurrentTask(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            fetch(`/api/station/${STATION_SLUG}/next-task/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({operator_id: currentUser})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'complete') {
+                    window.location.href = "{% url 'truck_selection' %}";
+                } else {
+                    loadData();
+                    resetTimer();
+                }
+            })
+            .catch(function() {
+                // On error do not leave page
+            });
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                completeCurrentTask(null);
+            }
+        });
+    </script>
+</body>
+</html>

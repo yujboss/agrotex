@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Your Station</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #2c3e50; margin: 0; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { text-align: center; max-width: 500px; }
+        h1 { margin-bottom: 10px; }
+        .subtitle { color: #bdc3c7; margin-bottom: 30px; font-size: 1em; }
+        .station-options { display: flex; flex-direction: column; gap: 12px; }
+        .station-btn {
+            display: block;
+            width: 100%;
+            padding: 20px;
+            background: #34495e;
+            color: white;
+            border: 2px solid #bdc3c7;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .station-btn:hover {
+            background: #3498db;
+            border-color: #3498db;
+        }
+        .station-btn small { display: block; color: #bdc3c7; font-size: 0.75em; margin-top: 5px; }
+        .station-btn:hover small { color: rgba(255,255,255,0.9); }
+        form { margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Select your station</h1>
+        <p class="subtitle">Choose the post (workstation) for this device. You only need to set this once per browser session.</p>
+        <form method="POST" action="{% url 'station_picker' %}">
+            {% csrf_token %}
+            <div class="station-options">
+                {% for s in stations %}
+                <button type="submit" name="station_slug" value="{{ s.slug }}" class="station-btn">
+                    {{ s.name }}
+                    <small>IP: {{ s.ip_address }}</small>
+                </button>
+                {% empty %}
+                <p style="color: #e74c3c;">No stations configured. Add work stations in Django Admin.</p>
+                {% endfor %}
+            </div>
+        </form>
+    </div>
+</body>
+</html>
