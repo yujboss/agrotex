@@ -82,13 +82,43 @@ This will:
 
 First run may take a few minutes while the image is built.
 
-### 3. Apply database migrations (first time only)
+### 3. Import the included database backup (recommended)
 
-In **another terminal**, from the project root:
+The repo includes **`factory_db_backup.sql`** — a PostgreSQL dump with sample data (workstations, workers, product variants, task categories, assembly steps). There is nothing private in it; it lets the project run with something to see right away.
+
+In **another terminal**, from the **project root** (where `factory_db_backup.sql` lives):
+
+**Linux / macOS / Git Bash:**
+
+```bash
+docker-compose exec -T db psql -U factory_admin -d factory_db < factory_db_backup.sql
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Get-Content factory_db_backup.sql -Raw | docker-compose exec -T db psql -U factory_admin -d factory_db
+```
+
+**Windows (CMD):**
+
+```cmd
+type factory_db_backup.sql | docker-compose exec -T db psql -U factory_admin -d factory_db
+```
+
+You should see SQL commands and possibly `CREATE TABLE`, `ALTER TABLE`, etc. When it finishes without errors, the database is populated. If the dump was made with a different schema version, run migrations next so the schema matches the code:
 
 ```bash
 docker-compose exec web python manage.py migrate
 ```
+
+**If you prefer an empty database** (no sample data), skip the backup import and run only:
+
+```bash
+docker-compose exec web python manage.py migrate
+```
+
+Then create a superuser and add workstations, workers, products, and assembly steps via Django Admin.
 
 ### 4. Create a superuser (first time only)
 
@@ -98,16 +128,9 @@ To access Django Admin (`/admin/`):
 docker-compose exec web python manage.py createsuperuser
 ```
 
-Enter username, email, and password when prompted.
+Enter username, email, and password when prompted. (The backup does not include admin users, so you must create one.)
 
-### 5. (Optional) Load initial data or backup
-
-If you have a database backup (e.g. `factory_db_backup.sql`):
-
-- **PostgreSQL:** restore into the `factory_db` database while the `db` container is running (e.g. `docker-compose exec -T db psql -U factory_admin -d factory_db < factory_db_backup.sql` or use a GUI).
-- Or use Django fixtures / Admin to recreate WorkStations, Workers, ProductVariants, TaskCategories, AssemblySteps, etc.
-
-### 6. Open the app
+### 5. Open the app
 
 - **App (station picker / truck selection / station detail / dashboard):**  
   **http://localhost:8000/**
@@ -152,7 +175,25 @@ In `backend/config/settings.py`, the default config uses host `db` (Docker). For
 
 For Channels, `CHANNEL_LAYERS` uses `("redis", 6379)`. For local Redis, change to `("127.0.0.1", 6379)` or use an env-based config.
 
-### 4. Migrate and run
+### 4. (Optional) Import the included backup
+
+To use the same sample data as with Docker, restore the backup into your local `factory_db`:
+
+**Linux / macOS:**
+
+```bash
+psql -U factory_admin -d factory_db -h 127.0.0.1 -f factory_db_backup.sql
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Get-Content factory_db_backup.sql -Raw | psql -U factory_admin -d factory_db -h 127.0.0.1
+```
+
+If you skip this, start with an empty DB and run migrations only.
+
+### 5. Migrate and run
 
 From the **project root**:
 
@@ -214,7 +255,7 @@ agrotex/
 ├── Dockerfile              # Image for Django app
 ├── requirements.txt        # Python dependencies
 ├── README.md               # This file
-├── factory_db_backup.sql   # Optional DB backup
+├── factory_db_backup.sql   # Included PostgreSQL backup (sample data; import for ready-to-use setup)
 └── backend/
     ├── manage.py
     ├── config/
@@ -244,8 +285,9 @@ agrotex/
 1. Install Git and Docker (Docker Desktop or Engine + Compose).
 2. `git clone https://github.com/yujboss/agrotex.git && cd agrotex`
 3. `docker-compose up --build`
-4. In another terminal: `docker-compose exec web python manage.py migrate`
-5. `docker-compose exec web python manage.py createsuperuser`
-6. Open http://localhost:8000 and http://localhost:8000/admin/
+4. In another terminal, **import the backup** (see step 3 above — use the command for your OS).
+5. Run migrations if needed: `docker-compose exec web python manage.py migrate`
+6. Create admin user: `docker-compose exec web python manage.py createsuperuser`
+7. Open http://localhost:8000 and http://localhost:8000/admin/
 
-After that, configure WorkStations, Workers, ProductVariants, TaskCategories, and AssemblySteps in Admin, then use the station picker and truck selection to start a run and use the station detail and dashboard.
+After importing the backup you’ll have sample workstations, workers, products, and assembly steps. Use the station picker and truck selection to start a run and the station detail / dashboard to use the app.
