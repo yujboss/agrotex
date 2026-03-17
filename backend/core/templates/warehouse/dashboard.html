@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Warehouse Dashboard</title>
+<style>
+body{
+    font-family:Segoe UI;
+    background:#0f172a;
+    color:white;
+    padding:40px;
+}
+
+/* HEADER */
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px;
+}
+.title{
+    font-size:28px;
+    font-weight:600;
+}
+
+/* STATS */
+.stats{
+    display:flex;
+    gap:20px;
+    margin-bottom:30px;
+}
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    width:200px;
+}
+.card h3{
+    margin:0;
+    font-size:26px;
+}
+.card span{
+    color:#94a3b8;
+}
+
+/* SEARCH */
+.search{
+    margin-bottom:20px;
+}
+.search input{
+    padding:10px;
+    width:300px;
+    border-radius:6px;
+    border:none;
+    background:#1e293b;
+    color:white;
+}
+
+/* TABLE */
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:#020617;
+    border-radius:10px;
+    overflow:hidden;
+}
+th{
+    text-align:left;
+    padding:14px;
+    color:#94a3b8;
+    border-bottom:1px solid #1e293b;
+}
+td{
+    padding:14px;
+    border-bottom:1px solid #1e293b;
+}
+
+/* STATUS */
+.badge{
+    padding:5px 10px;
+    border-radius:6px;
+    font-size:12px;
+    font-weight:600;
+}
+.green{ background:#052e16; color:#22c55e; }
+.yellow{ background:#422006; color:#facc15; }
+.red{ background:#450a0a; color:#ef4444; }
+
+/* BUTTON */
+button{
+    padding:6px 12px;
+    background:#2563eb;
+    border:none;
+    border-radius:6px;
+    color:white;
+    cursor:pointer;
+    font-weight: bold;
+}
+button:hover{
+    background:#1d4ed8;
+}
+
+/* INPUT УБИРАЕМ СТРЕЛОЧКИ */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">Warehouse Dashboard</div>
+</div>
+
+<div class="stats">
+    <div class="card">
+        <h3>{{ inventory|length }}</h3>
+        <span>Total Parts</span>
+    </div>
+    <div class="card">
+        <h3 id="lowCount">0</h3>
+        <span>Low Stock</span>
+    </div>
+    <div class="card">
+        <h3 id="criticalCount">0</h3>
+        <span>Critical</span>
+    </div>
+</div>
+
+<div class="search">
+    <input type="text" id="search" placeholder="Search part...">
+</div>
+
+<table id="table">
+    <tr>
+        <th>Part</th>
+        <th>Stock</th>
+        <th>Status</th>
+        <th>Action</th>
+    </tr>
+
+    {% for item in inventory %}
+    <tr>
+        <td>{{ item.part }}</td>
+        <td>{{ item.stock }}</td>
+        <td>
+            {% if item.status == "RED" %}
+                <span class="badge red">CRITICAL</span>
+            {% elif item.status == "YELLOW" %}
+                <span class="badge yellow">LOW</span>
+            {% else %}
+                <span class="badge green">OK</span>
+            {% endif %}
+        </td>
+        <td>
+            <div id="action-{{ forloop.counter }}">
+                <button onclick="showInput('{{ forloop.counter }}')">Reorder</button>
+            </div>
+
+            <div id="input-{{ forloop.counter }}" style="display:none; gap:5px; align-items:center;">
+                <input type="number" id="qty-{{ forloop.counter }}" placeholder="Qty" min="1"
+                       style="width: 60px; padding: 6px; border-radius: 4px; border: none; background: #1e293b; color: white; outline: none;">
+                
+                <button onclick="submitReorder('{{ item.part }}', '{{ forloop.counter }}')" style="background: #22c55e;">OK</button>
+                <button onclick="hideInput('{{ forloop.counter }}')" style="background: #ef4444; padding: 6px 10px;">X</button>
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<script>
+/* SEARCH */
+document.getElementById("search").addEventListener("keyup", function(){
+    let value=this.value.toLowerCase();
+    let rows=document.querySelectorAll("#table tr");
+    rows.forEach((row,i)=>{
+        if(i===0) return;
+        let text=row.innerText.toLowerCase();
+        row.style.display=text.includes(value)?"":"none";
+    });
+});
+
+/* COUNT LOW / CRITICAL */
+let rows=document.querySelectorAll("#table tr");
+let low=0;
+let critical=0;
+rows.forEach((row,i)=>{
+    if(i===0) return;
+    let text=row.innerText;
+    if(text.includes("LOW")) low++;
+    if(text.includes("CRITICAL")) critical++;
+});
+document.getElementById("lowCount").innerText=low;
+document.getElementById("criticalCount").innerText=critical;
+
+/* SHOW / HIDE INPUT */
+function showInput(id) {
+    document.getElementById("action-" + id).style.display = "none";
+    document.getElementById("input-" + id).style.display = "flex";
+}
+
+function hideInput(id) {
+    document.getElementById("action-" + id).style.display = "block";
+    document.getElementById("input-" + id).style.display = "none";
+    document.getElementById("qty-" + id).value = ""; // Очищаем поле при отмене
+}
+
+/* SUBMIT REORDER */
+function submitReorder(part, id) {
+    let qtyInput = document.getElementById("qty-" + id).value;
+    let qty = parseInt(qtyInput);
+
+    if (isNaN(qty) || qty <= 0) {
+        alert("Пожалуйста, введите количество больше 0!");
+        return;
+    }
+
+    fetch("/api/reorder/", {
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify({
+            part: part,
+            quantity: qty
+        })
+    })
+    .then(response=>response.json())
+    .then(data=>{
+        if(data.status==="created"){
+            alert("✅ Успешно заказано: " + qty + " шт. Склад пополнен!");
+            window.location.reload(); // Перезагружаем страницу для обновления остатков
+        } else {
+            alert("❌ Ошибка: " + (data.message || data.status));
+        }
+    })
+    .catch(error=>{
+        console.error(error);
+        alert("Server error");
+    });
+}
+</script>
+
+</body>
+</html>

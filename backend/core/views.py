@@ -2,6 +2,19 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.conf import settings
 from .models import WorkStation, AssemblyStep, ProductVariant, TruckRun, Worker, TaskLog
 import logging
+from core.telegram_bot import send_telegram_message
+from .models import Inventory
+from django.shortcuts import render, redirect
+from core.models import Worker
+from django.http import HttpResponseForbidden
+from core.models import Worker, Inventory
+from django.shortcuts import render, redirect
+from .models import ProductionOrder, TruckRun, ProductVariant
+from django.views.decorators.csrf import csrf_exempt
+from .models import ProductionOrder, ProductVariant, TruckRun
+from .models import ProductionOrder
+from django.http import HttpResponseForbidden
+from core.models import Worker, Inventory
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +42,7 @@ def login_page(request):
             return redirect(f"/station/{worker.assigned_station.slug}/")
 
     return render(request, "login.html")
+
 
 def get_client_ip(request):
     """Get the client's IP address, considering proxies (X-Forwarded-For)."""
@@ -157,6 +171,12 @@ def production_dashboard(request):
 def run_page(request):
     """Display the production run table (run.html data)."""
     return render(request, 'core/run.html')
+    
+
+
+
+
+
 def warehouse_dashboard(request):
 
     badge = request.session.get("worker_badge")
@@ -191,6 +211,15 @@ def warehouse_dashboard(request):
     return render(request, "warehouse/dashboard.html", {
         "inventory": data
     })
+
+
+
+
+
+
+
+
+
 
 def create_production_order(request):
     if request.method == "POST":

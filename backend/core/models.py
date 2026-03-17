@@ -1,5 +1,9 @@
 from django.db import models
 from django.utils import timezone
+import qrcode
+from io import BytesIO
+from django.core.files import File
+
 
 # --- CONFIGURATION (Users & Stations) ---
 
@@ -18,6 +22,7 @@ class WorkStation(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Worker(models.Model):
     ROLE_CHOICES = [
@@ -59,6 +64,7 @@ class Worker(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.badge_id})"
+
 
 # --- STATIC DATA (The Plan) ---
 
@@ -177,6 +183,7 @@ class TaskLog(models.Model):
 
     class Meta:
         ordering = ['start_time']
+
 class Order(models.Model):
 
     customer = models.CharField(max_length=200)

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Production Orders</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+padding:40px;
+}
+
+.container{
+max-width:1000px;
+margin:auto;
+}
+
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.button{
+background:#3b82f6;
+padding:10px 20px;
+border-radius:8px;
+color:white;
+text-decoration:none;
+font-weight:bold;
+}
+
+.button:hover{
+background:#2563eb;
+}
+
+.table{
+margin-top:30px;
+width:100%;
+border-collapse:collapse;
+background:#1e293b;
+border-radius:10px;
+overflow:hidden;
+}
+
+.table th{
+background:#334155;
+padding:14px;
+text-align:left;
+}
+
+.table td{
+padding:14px;
+border-bottom:1px solid #475569;
+}
+
+.delete{
+color:#ef4444;
+text-decoration:none;
+font-weight:bold;
+}
+
+.delete:hover{
+color:#dc2626;
+}
+
+img{
+border-radius:6px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<h1>Production Orders</h1>
+
+<a class="button" href="/orders/create/">
+Create Order
+</a>
+
+</div>
+
+<table class="table">
+
+<tr>
+<th>ID</th>
+<th>Model</th>
+<th>Quantity</th>
+<th>VIN</th>
+<th>Image</th>
+<th>Created</th>
+<th>Action</th>
+</tr>
+
+{% for order in orders %}
+
+<tr>
+
+<td>{{ order.id }}</td>
+
+<td>{{ order.model_name }}</td>
+
+<td>{{ order.quantity }}</td>
+
+<td>{{ order.vin_prefix }}</td>
+
+<td>
+{% if order.tractor_image %}
+<img src="{{order.tractor_image.url}}" width="70">
+{% else %}
+—
+{% endif %}
+</td>
+
+<td>{{ order.created_at }}</td>
+
+<td>
+<a class="delete" href="/orders/delete/{{order.id}}/">Delete</a>
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</body>
+
+</html>

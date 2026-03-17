@@ -141,6 +141,13 @@
             display: flex;
             justify-content: space-between;
         }
+        /* Стили для обрезки длинного текста задачи */
+        .task-name-text {
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            max-width: 75%;
+        }
         .progress-bar {
             width: 100%;
             height: 8px;
@@ -192,8 +199,7 @@
     </div>
     
     <div class="dashboard-grid" id="dashboard-grid">
-        <!-- Stations will be loaded here -->
-    </div>
+        </div>
 
     <script>
         function formatTime(date) {
@@ -259,7 +265,9 @@
                         
                         <div class="progress-section">
                             <div class="progress-label">
-                                <span>Current task</span>
+                                <span class="task-name-text" title="${station.current_task_name || 'No active task'}">
+                                    ${station.current_task_name || 'No active task'}
+                                </span>
                                 <span>${Math.round(station.progress_percent || 0)}%</span>
                             </div>
                             <div class="progress-bar">

@@ -1,5 +1,9 @@
 from django.urls import path
 from . import views, api
+from .api import worker_by_badge
+from django.urls import path
+from . import views
+
 
 urlpatterns = [
     path('', views.login_page, name='login'),

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Create Production Order</title>
+<style>
+body {
+    background: #0f172a;
+    font-family: Arial;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.card {
+    background: #1e293b;
+    padding: 40px;
+    border-radius: 12px;
+    width: 420px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+h2 { margin-bottom: 20px; }
+label {
+    display: block;
+    margin-top: 15px;
+}
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    border-radius: 6px;
+    border: none;
+    background: #334155;
+    color: white;
+    box-sizing: border-box; /* Чтобы поля не вылезали за края */
+}
+button {
+    margin-top: 25px;
+    width: 100%;
+    padding: 12px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+button:hover { background: #2563eb; }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Create Production Order</h2>
+    
+    <form method="POST">
+        {% csrf_token %}
+
+        <label>Tractor Model</label>
+        <select name="product_id" required>
+            <option value="" disabled selected>Select a model...</option>
+            {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Quantity</label>
+        <input type="number" name="quantity" placeholder="Example: 10" required>
+
+        <label>VIN Prefix (optional)</label>
+        <input type="text" name="vin_prefix" placeholder="Example: BLR1822">
+
+        <button type="submit">Create Order</button>
+    </form>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<title>Factory Terminal</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#1f2937;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.container{
+background:#374151;
+padding:40px;
+border-radius:12px;
+width:420px;
+text-align:center;
+box-shadow:0 10px 30px rgba(0,0,0,0.4);
+}
+
+h1{
+margin-bottom:25px;
+}
+
+input{
+width:100%;
+padding:14px;
+font-size:18px;
+border-radius:8px;
+border:none;
+margin-bottom:15px;
+}
+
+button{
+width:100%;
+padding:14px;
+background:#3b82f6;
+border:none;
+border-radius:8px;
+font-size:16px;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:#2563eb;
+}
+
+.error{
+color:#ef4444;
+margin-bottom:10px;
+}
+
+.admin{
+margin-top:20px;
+font-size:14px;
+}
+
+.admin a{
+color:#60a5fa;
+text-decoration:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Factory Terminal</h1>
+
+<form method="POST" id="loginForm">
+{% csrf_token %}
+
+<input
+type="text"
+name="badge"
+id="badge"
+placeholder="Scan badge..."
+autofocus
+>
+
+<button type="submit">
+Login
+</button>
+
+</form>
+
+<br>
+
+<button onclick="startScanner()" style="
+background:#10b981;
+padding:12px;
+border:none;
+border-radius:8px;
+color:white;
+cursor:pointer;
+width:100%;
+">
+Scan QR Code
+</button>
+
+<div id="reader" style="margin-top:20px"></div>
+
+<div class="admin">
+<a href="/admin/">Admin login</a>
+</div>
+
+</div>
+
+<script>
+
+function startScanner(){
+
+const scanner = new Html5Qrcode("reader")
+
+scanner.start(
+{ facingMode: "environment" },
+{
+fps:10,
+qrbox:250
+},
+(qrCodeMessage)=>{
+
+document.getElementById("badge").value = qrCodeMessage
+
+document.getElementById("loginForm").submit()
+
+scanner.stop()
+
+},
+(error)=>{}
+)
+
+}
+
+</script>
+
+</body>
+</html>

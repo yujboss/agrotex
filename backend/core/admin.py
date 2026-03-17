@@ -1,5 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from .models import StepPart
+from .models import PurchaseOrder
+from django.forms import Textarea
+from django.db import models
+from .models import AssemblyStep, StepPart, Part
+admin.site.register(PurchaseOrder)
+
 from .models import (
     WorkStation,
     Worker,

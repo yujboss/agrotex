@@ -1,0 +1,122 @@
+{% extends "admin/change_form.html" %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+{% endblock %}
+
+{% block after_field_sets %}
+    {{ block.super }}
+    
+    <fieldset class="module aligned">
+        <h2>📸 Оцифровка лица (Face-API)</h2>
+        <div style="padding: 20px; display: flex; gap: 20px;">
+            
+            <div style="position: relative; width: 320px; height: 240px; background: #2c3e50; border-radius: 8px; overflow: hidden; border: 2px solid #34495e;">
+                <video id="webcamVideo" width="320" height="240" autoplay muted style="position: absolute;"></video>
+                <canvas id="overlayCanvas" width="320" height="240" style="position: absolute; top: 0; left: 0;"></canvas>
+            </div>
+            
+            <div>
+                <button type="button" id="startCameraBtn" class="button" style="padding: 10px 20px; font-size: 14px; margin-bottom: 10px; background: #3498db; color: white;">🎥 Включить камеру</button><br>
+                <button type="button" id="captureFaceBtn" class="button default" style="display:none; padding: 10px 20px; font-size: 14px; background: #27ae60; color: white;">✅ Сохранить отпечаток лица</button>
+                <p id="faceStatus" style="font-weight: bold; margin-top: 15px; color: #7f8c8d;">Нажмите "Включить камеру" для начала...</p>
+            </div>
+            
+        </div>
+    </fieldset>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const video = document.getElementById('webcamVideo');
+            const canvas = document.getElementById('overlayCanvas');
+            const startBtn = document.getElementById('startCameraBtn');
+            const captureBtn = document.getElementById('captureFaceBtn');
+            const status = document.getElementById('faceStatus');
+            
+            // Находим поле, куда Джанго будет сохранять данные (JSON)
+            const descriptorInput = document.getElementById('id_face_descriptor'); 
+
+            if(descriptorInput) {
+                descriptorInput.style.backgroundColor = "#ecf0f1";
+                descriptorInput.readOnly = true; // Блокируем ручной ввод, чтобы не сломать JSON
+            }
+
+            let localStream = null;
+
+            startBtn.addEventListener('click', async () => {
+                status.innerText = "⏳ Загрузка ИИ моделей... (занимает пару секунд)";
+                status.style.color = "#f39c12";
+                
+                try {
+                    // Грузим веса нейросети прямо с официального репозитория
+                    const MODEL_URL = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model/';
+                    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+                    status.innerText = "Доступ к камере...";
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    localStream = stream;
+                    video.srcObject = stream;
+                    
+                    startBtn.style.display = 'none';
+                    captureBtn.style.display = 'inline-block';
+                    status.innerText = "👁️ Камера работает. Посмотрите в объектив.";
+                    status.style.color = "#3498db";
+
+                    // Как только видео пошло, начинаем искать лицо
+                    video.addEventListener('play', () => {
+                        const displaySize = { width: video.width, height: video.height };
+                        faceapi.matchDimensions(canvas, displaySize);
+                        
+                        setInterval(async () => {
+                            const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            
+                            if (detection) {
+                                // Рисуем квадратик вокруг лица (прямо как ты хотел!)
+                                const resizedDetection = faceapi.resizeResults(detection, displaySize);
+                                faceapi.draw.drawDetections(canvas, resizedDetection);
+                                
+                                status.innerText = "🎯 Лицо поймано! Нажмите зеленую кнопку.";
+                                status.style.color = "#27ae60";
+                            } else {
+                                status.innerText = "🔍 Лицо не распознано. Встаньте перед камерой.";
+                                status.style.color = "#e74c3c";
+                            }
+                        }, 200);
+                    });
+                } catch (err) {
+                    status.innerText = "❌ Ошибка камеры или сети: " + err;
+                    status.style.color = "#c0392b";
+                }
+            });
+
+            // Когда нажимаем "Сохранить отпечаток"
+            captureBtn.addEventListener('click', async () => {
+                status.innerText = "⏳ Вычисление 128-мерного вектора...";
+                const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+                
+                if (detection) {
+                    // Превращаем массив данных в JSON и прячем в поле Джанго
+                    const descriptorArray = Array.from(detection.descriptor);
+                    descriptorInput.value = JSON.stringify(descriptorArray);
+                    
+                    status.innerText = "💾 Отпечаток готов! Теперь нажмите 'SAVE' в самом низу страницы.";
+                    status.style.color = "#27ae60";
+                    captureBtn.style.display = 'none';
+                    
+                    // Выключаем камеру
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => track.stop());
+                    }
+                } else {
+                    status.innerText = "❌ Не удалось сделать снимок. Попробуйте еще раз.";
+                    status.style.color = "#c0392b";
+                }
+            });
+        });
+    </script>
+{% endblock %}

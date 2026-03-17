@@ -3,8 +3,18 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from datetime import datetime, timezone as dt_timezone
+from django.http import JsonResponse
+from django.utils import timezone
+from core.telegram_bot import send_telegram_message
+from .models import Worker
 import json
+import math
 from .models import WorkStation, Worker, TruckRun, TaskLog, AssemblyStep
+from .models import StepPart, Inventory, PartConsumption
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from core.models import Part, Order
+from core.models import PurchaseOrder
 
 @csrf_exempt
 def next_task_api(request, station_slug):
@@ -531,4 +541,12 @@ def start_truck_api(request, station_slug):
     truck.save()
     
     return JsonResponse({'status': 'success'})
+
+
+
+
+
+
+
+
 
