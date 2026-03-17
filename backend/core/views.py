@@ -83,39 +83,52 @@ def station_picker_clear(request):
 
 def truck_selection(request):
     products = ProductVariant.objects.all()
-    # Use manually selected station from session (set once in station picker)
+
     station = get_station_from_session(request)
     if not station:
-        # No station chosen yet: show station picker first
         return redirect('station_picker')
-    
-    # Debug: Log product and image information
-    for product in products:
-        logger.info(f"Product: {product.name}, Image: {product.image}, Image URL: {product.image.url if product.image else 'None'}")
-    
+
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
         truck_serial_number = request.POST.get('truck_serial_number')
+
         product = get_object_or_404(ProductVariant, id=product_id)
-        
-        # Deactivate any other active runs for this station
-        TruckRun.objects.filter(workstation=station, is_active=True).update(is_active=False)
-        
-        # Create a new truck run
+
+        # 1️⃣ если трактор с таким VIN уже есть → открыть его станцию
+        existing_run = TruckRun.objects.filter(
+            truck_serial_number=truck_serial_number,
+            is_active=True
+        ).first()
+
+        if existing_run:
+            return redirect('station_detail', slug=existing_run.workstation.slug)
+
+        # 2️⃣ если на станции уже есть трактор → НЕ менять его
+        station_run = TruckRun.objects.filter(
+            workstation=station,
+            is_active=True
+        ).first()
+
+        if station_run:
+            return redirect('station_detail', slug=station.slug)
+
+        # 3️⃣ создать новый трактор
         TruckRun.objects.create(
             workstation=station,
             product=product,
             truck_serial_number=truck_serial_number,
             is_active=True
         )
+
         return redirect('station_detail', slug=station.slug)
-    
+
     context = {
         'products': products,
         'station': station,
         'media_url': settings.MEDIA_URL,
         'media_root': str(settings.MEDIA_ROOT),
     }
+
     return render(request, 'core/truck_selection.html', context)
 
 def station_detail(request, slug):
