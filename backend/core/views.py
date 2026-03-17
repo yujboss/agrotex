@@ -157,3 +157,37 @@ def production_dashboard(request):
 def run_page(request):
     """Display the production run table (run.html data)."""
     return render(request, 'core/run.html')
+def warehouse_dashboard(request):
+
+    badge = request.session.get("worker_badge")
+
+    worker = Worker.objects.filter(badge_id=badge).first()
+
+    if not worker or worker.role != "WAREHOUSE":
+        return HttpResponseForbidden("Access denied")
+
+    inventory = Inventory.objects.select_related("part").all()
+
+    data = []
+
+    for item in inventory:
+
+        status = item.stock_status()
+
+        if status == "RED":
+            color = "critical"
+        elif status == "YELLOW":
+            color = "low"
+        else:
+            color = "ok"
+
+        data.append({
+            "part": item.part.code,
+            "stock": item.quantity,
+            "status": status,
+            "color": color
+        })
+
+    return render(request, "warehouse/dashboard.html", {
+        "inventory": data
+    })
