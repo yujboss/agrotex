@@ -178,102 +178,127 @@ def next_task_api(request, station_slug):
 
 @csrf_exempt
 def station_data_api(request, station_slug):
-    """ Returns ALL data needed for the UI """
+    """ Возвращает все данные для UI """
     station = get_object_or_404(WorkStation, slug=station_slug)
+    
+    # Рабочие этой станции
     workers = Worker.objects.filter(assigned_station=station).values('name', 'badge_id', 'role')
-    truck_run = TruckRun.objects.filter(workstation=station, is_active=True).last()
     
-    if not truck_run:
-        return JsonResponse({'status': 'no_truck', 'workers': list(workers)})
+    # Очередь тракторов (is_active=False)
+    available_trucks = TruckRun.objects.filter(workstation=station, is_active=False).select_related("product")
+    available_data = [{
+        "id": t.id, "vin": t.truck_serial_number, 
+        "model": t.product.name if t.product else "",
+        "image": t.product.image.url if t.product and t.product.image else ""
+    } for t in available_trucks]
 
-    steps = AssemblyStep.objects.filter(workstation=station, product=truck_run.product).select_related('category').order_by('step_number')
-    logs = TaskLog.objects.filter(truck_run=truck_run).select_related('operator', 'assembly_step')
-    log_map = {log.assembly_step.id: log for log in logs}
-    
+    # Активный трактор (is_active=True)
+    truck_run = TruckRun.objects.filter(workstation=station, is_active=True).last()  
     tasks_data = []
     current_step_id = None
-    current_task_start_time = None
-    current_task_color = None  # G / Y / R for Arduino - based on CURRENT task only
-    current_task_elapsed_seconds = None
-    current_task_standard_seconds = None
-    completed_tasks = 0
-    total_standard_time = 0
-    total_actual_time = 0
+    
+
+
+    # ВАЖНО: Создаем переменные для таймера ДО цикла
+    timer_start_time = None
+    timer_elapsed = None
+    timer_standard = None
+    
+    # Шаги и логи
+    steps = AssemblyStep.objects.filter(workstation=station).order_by('step_number')
+    log_map = {}
+    if truck_run:
+        logs = TaskLog.objects.filter(truck_run=truck_run).select_related('assembly_step')
+        log_map = {log.assembly_step.id: log for log in logs}
+
+    tasks_data = []
+    current_step_id = None
+    current_operator_badge = None  # <--- НОВОЕ: Переменная для бейджа текущего рабочего
+    
+    # ВАЖНО: Создаем переменные для таймера ДО цикла
+    timer_start_time = None
+    timer_elapsed = None
+    timer_standard = None
+    
+    # Шаги и логи
+    # === НОВАЯ ЛОГИКА: Грузим шаги ТОЛЬКО для текущего трактора ===
+    if truck_run and truck_run.product:
+        steps = AssemblyStep.objects.filter(workstation=station, product=truck_run.product).order_by('step_number')
+    else:
+        # Если трактора на станции нет, то и шаги не показываем
+        steps = AssemblyStep.objects.none()
 
     for step in steps:
         log = log_map.get(step.id)
-        status, color = 'PENDING', 'PENDING'
-        completion_time, operator_id = None, None
+        status = 'PENDING'
+        color = 'PENDING'
         
+        # НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ СПИСКА:
+        operator_name = "-"
+        time_spent_sec = 0
+
         if log:
+            if log.operator:
+                # Берем имя оператора (можно сделать обрезку до фамилии, если нужно)
+                operator_name = log.operator.name
+
             if log.end_time:
-                status, color = 'DONE', log.status_color or 'GREEN'
-                completion_time = (log.end_time - log.start_time).total_seconds()
-                completed_tasks += 1
-                total_standard_time += step.standard_duration_seconds
-                total_actual_time += completion_time
+                status = 'DONE'
+                color = log.status_color or 'GREEN'
+                # Считаем потраченное время для завершенных задач
+                time_spent_sec = int((log.end_time - log.start_time).total_seconds())
             else:
-                status, color, current_step_id = 'IN_PROGRESS', 'BLUE', step.id
-                current_task_start_time = log.start_time.isoformat()
-                # Color for Arduino: based on THIS task only (elapsed vs standard), use UTC to match agent
-                std_sec = int(step.standard_duration_seconds or 300)
+                status = 'IN_PROGRESS'
+                color = 'BLUE'
+                current_step_id = step.id
+                if log.operator:
+                    current_operator_badge = log.operator.badge_id
+
+                # Считаем время в реальном времени для текущей задачи
                 start_utc = log.start_time if log.start_time.tzinfo else timezone.make_aware(log.start_time)
                 start_utc = start_utc.astimezone(dt_timezone.utc)
                 now_utc = datetime.now(dt_timezone.utc)
-                elapsed_sec = (now_utc - start_utc).total_seconds()
-                # Same thresholds as browser progress bar: 50% = yellow, 80% = red (so light matches screen)
-                threshold_yellow = std_sec * 0.5   # 50% of standard time
-                threshold_red = std_sec * 0.8     # 80% of standard time
-                current_task_standard_seconds = std_sec
-                current_task_elapsed_seconds = round(elapsed_sec, 1)
-                if elapsed_sec < threshold_yellow:
-                    current_task_color = 'G'
-                elif elapsed_sec < threshold_red:
-                    current_task_color = 'Y'
-                else:
-                    current_task_color = 'R'
-            
-            if log.operator:
-                operator_id = log.operator.badge_id
-        
+                time_spent_sec = int((now_utc - start_utc).total_seconds())
+
+        # Норматив
+        std_sec = int(step.standard_duration_seconds or 180)
+
+        # Если это текущая задача, прокидываем переменные для большого таймера
+        if status == 'IN_PROGRESS':
+            timer_start_time = log.start_time.isoformat()
+            timer_standard = std_sec
+            timer_elapsed = time_spent_sec
+
         tasks_data.append({
-            'id': step.id, 
-            'step_number': step.step_number, 
+            'id': step.id,
+            'step_number': step.step_number,
             'description': step.description,
-            'category': step.category.name if step.category else 'General',
-            'status': status, 
-            'color': color, 
-            'standard_time': step.standard_duration_seconds,
-            'completion_time': completion_time,
-            'operator_id': operator_id
+            'category_name': step.category.name if step.category else "ОБЩИЕ РАБОТЫ", # Категория из БД
+            'operator_name': operator_name,
+            'time_spent_sec': time_spent_sec,
+            'standard_sec': std_sec,
+            'heading': step.heading if step.heading else f"Шаг {step.step_number}",
+            'status': status,
+            'color': color
         })
 
-    progress_percent = (completed_tasks / len(steps)) * 100 if len(steps) > 0 else 0
-    
-    is_late = False
-    is_very_late = False
-    if total_standard_time > 0:
-        if total_actual_time > total_standard_time * 1.2:
-            is_very_late = True
-        elif total_actual_time > total_standard_time:
-            is_late = True
-
     return JsonResponse({
-        'status': 'active', 
-        'truck_code': truck_run.product.code,
-        'truck_serial_number': truck_run.truck_serial_number or '',
-        'truck_image_url': truck_run.product.image.url if truck_run.product.image else '',
-        'truck_name': truck_run.product.name,
-        'workers': list(workers), 
-        'tasks': tasks_data, 
+        'status': 'active',
+        'available_trucks': available_data,
+        'truck_serial_number': truck_run.truck_serial_number if truck_run else "",
+        'truck_image_url': truck_run.product.image.url if truck_run and truck_run.product and truck_run.product.image else "",
+        'workers': list(workers),
+        'tasks': tasks_data,
         'current_step_id': current_step_id,
-        'current_task_start_time': current_task_start_time,
-        'current_task_color': current_task_color,  # G / Y / R for Arduino (current task only)
-        'current_task_elapsed_seconds': current_task_elapsed_seconds,
-        'current_task_standard_seconds': current_task_standard_seconds,
-        'progress_percent': progress_percent,
-        'is_late': is_late,
-        'is_very_late': is_very_late
+        'current_truck_id': truck_run.id if truck_run else None,
+        # ТЕПЕРЬ ПЕРЕДАЕМ НАСТОЯЩИЕ ЗНАЧЕНИЯ, А НЕ None
+        'current_task_start_time': timer_start_time,
+        # <--- НОВОЕ: Отправляем бейдж рабочего на фронтенд
+        'current_operator_badge': current_operator_badge,
+        # --- НОВАЯ СТРОЧКА: Отправляем название модели ---
+        'truck_model_name': truck_run.product.name if truck_run and truck_run.product else "",
+        'current_task_elapsed_seconds': timer_elapsed,
+        'current_task_standard_seconds': timer_standard
     })
 
 @csrf_exempt
