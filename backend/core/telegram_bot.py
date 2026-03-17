@@ -1,10 +1,7 @@
 import requests
 
-TELEGRAM_TOKEN = "8606896392:AAGywL-z1jcmkvwOyBZLzI0mshPr_5HG4H8"
-TELEGRAM_CHAT_IDS = [
-    "738678945",
-    "140467689"
-]
+TELEGRAM_TOKEN = ""
+TELEGRAM_CHAT_IDS = []
 
 
 def send_telegram_message(text):
