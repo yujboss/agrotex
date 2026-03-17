@@ -20,14 +20,42 @@ class WorkStation(models.Model):
         return self.name
 
 class Worker(models.Model):
-    ROLE_CHOICES = [('USTA', 'Operator'), ('BRIGADIR', 'Brigadier')]
-    
-    name = models.CharField(max_length=100) # e.g. "Ali Valiyev"
-    badge_id = models.CharField(max_length=20, unique=True) # e.g. "USTA_1"
+    ROLE_CHOICES = [
+        ('USTA', 'Operator'),
+        ('BRIGADIR', 'Brigadier'),
+        ("WAREHOUSE","Warehouse"),
+        ('ORDER_MANAGER', 'Order Manager')
+    ]
+
+    name = models.CharField(max_length=100)  # e.g. "Ali Valiyev"
+    badge_id = models.CharField(max_length=20, unique=True)  # e.g. "USTA_1"
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='USTA')
-    
-    # Assign worker to a station (Optional: can be null if they roam)
-    assigned_station = models.ForeignKey(WorkStation, on_delete=models.SET_NULL, null=True, blank=True)
+    # Мы будем хранить здесь массив координат лица (128 точек)
+    face_descriptor = models.JSONField(null=True, blank=True, verbose_name="Цифровой отпечаток лица")
+    assigned_station = models.ForeignKey(
+        WorkStation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    # NEW FIELD → QR CODE
+    qr_code = models.ImageField(upload_to="qr_codes/", blank=True, null=True)
+
+    # --- НОВОЕ ПОЛЕ: ФОТО СОТРУДНИКА ---
+    photo = models.ImageField(upload_to="worker_photos/", blank=True, null=True, verbose_name="Фото сотрудника")
+
+    def save(self, *args, **kwargs):
+        if not self.qr_code:
+            qr = qrcode.make(self.badge_id)
+
+            buffer = BytesIO()
+            qr.save(buffer, format="PNG")
+
+            file_name = f"{self.badge_id}.png"
+            self.qr_code.save(file_name, File(buffer), save=False)
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.badge_id})"
