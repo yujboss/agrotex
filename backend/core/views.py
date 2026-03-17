@@ -131,30 +131,19 @@ def truck_selection(request):
 
     return render(request, 'core/truck_selection.html', context)
 
-def station_detail(request, slug):
-    # 1. Find the station based on the URL (e.g., /station/post-1/)
-    station = get_object_or_404(WorkStation, slug=slug)
-    
-    # 2. Get the active truck run for this station
-    truck_run = TruckRun.objects.filter(workstation=station, is_active=True).last()
-    
-    context = {
-        'station': station,
-        'truck_run': truck_run,
-        'product': truck_run.product if truck_run else None,
-        'truck_serial_number': truck_run.truck_serial_number if truck_run else None,
-        'steps': [],
-    }
+def station_detail(request, station_slug):
 
-    if truck_run and truck_run.product:
-        # 3. Fetch only the steps for THIS station and THIS product
-        steps = AssemblyStep.objects.filter(
-            workstation=station,
-            product=truck_run.product
-        ).order_by('step_number')
-        context['steps'] = steps
+    station = get_object_or_404(WorkStation, slug=station_slug)
 
-    return render(request, 'core/station_detail.html', context)
+    available_trucks = TruckRun.objects.filter(
+        workstation=station,
+        is_active=False
+    )
+
+    return render(request, "core/station_detail.html", {
+        "station": station,
+        "available_trucks": available_trucks
+    })
 
 def production_dashboard(request):
     """Production line dashboard showing all stations"""
