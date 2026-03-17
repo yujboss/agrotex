@@ -66,10 +66,14 @@ class ProductVariant(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=50, unique=True)
     image = models.ImageField(upload_to='trucks/', blank=True, null=True)
-    def __str__(self): return self.name
+
+    def __str__(self):
+        return self.name
+
 
 class TaskCategory(models.Model):
     """ Grouping steps (e.g. '1. Marking', '2. Chassis Assembly') """
+
     name = models.CharField(max_length=100)
     ordering = models.IntegerField(default=0)
 
@@ -80,23 +84,35 @@ class TaskCategory(models.Model):
     def __str__(self):
         return self.name
 
+
 class AssemblyStep(models.Model):
-    workstation = models.ForeignKey(WorkStation, on_delete=models.CASCADE)
-    product = models.ForeignKey(ProductVariant, on_delete=models.CASCADE)
-    category = models.ForeignKey(TaskCategory, on_delete=models.CASCADE, null=True, blank=True)
+    workstation = models.ForeignKey('WorkStation', on_delete=models.CASCADE)
     
-    step_number = models.IntegerField()
-    description = models.TextField()
-    standard_duration_seconds = models.IntegerField(default=300)
-    tooling = models.CharField(max_length=200, blank=True)
-    torque = models.CharField(max_length=50, blank=True)
+    # Привязка к трактору
+    product = models.ForeignKey('ProductVariant', on_delete=models.CASCADE, null=True, blank=True)
+    category = models.ForeignKey('TaskCategory', on_delete=models.CASCADE, null=True, blank=True)
     
+    step_number = models.IntegerField("№ шага")
+    
+    # Тот самый заголовок
+    heading = models.CharField("Заголовок (например: 1.1 Установка...)", max_length=255, blank=True, null=True)
+    
+    description = models.TextField("Описание работ")
+    standard_duration_seconds = models.IntegerField("Время (сек)", default=300)
+
+    tooling = models.CharField("Оснастка", max_length=200, blank=True)
+    torque = models.CharField("Момент затяжки", max_length=50, blank=True)
+
     class Meta:
-        ordering = ['step_number']
-        unique_together = ('workstation', 'product', 'step_number')
+        ordering = ['product', 'step_number']
+        unique_together = ('product', 'workstation', 'step_number')
+        
+        verbose_name = "Задание"
+        verbose_name_plural = "Задания (Техкарты)"
 
     def __str__(self):
-        return f"Step {self.step_number}: {self.description}"
+        return f"{self.product} | Шаг {self.step_number}"
+
 
 # --- DYNAMIC DATA (The Reality) ---
 
