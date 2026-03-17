@@ -191,3 +191,59 @@ def warehouse_dashboard(request):
     return render(request, "warehouse/dashboard.html", {
         "inventory": data
     })
+
+def create_production_order(request):
+    if request.method == "POST":
+        product_id = request.POST.get("product_id")
+        quantity = int(request.POST.get("quantity", 1))
+        vin_prefix = request.POST.get("vin_prefix")
+
+        # ИСПОЛЬЗУЕМ ТВОЙ PRODUCT VARIANT
+        selected_product = get_object_or_404(ProductVariant, id=product_id)
+
+        order = ProductionOrder.objects.create(
+            model_name=selected_product.name, 
+            quantity=quantity,
+            vin_prefix=vin_prefix,
+            tractor_image=selected_product.image 
+        )
+
+        first_station = WorkStation.objects.filter(is_active=True).order_by("id").first()
+
+        for i in range(quantity):
+            if quantity == 1:
+                serial = vin_prefix
+            else:
+                serial = f"{vin_prefix}{str(i+1).zfill(3)}"
+
+            TruckRun.objects.create(
+                workstation=first_station,
+                product=selected_product, 
+                truck_serial_number=serial,
+                is_active=False
+            )
+
+        return redirect("/orders/")
+
+    # Передаем ProductVariant в выпадающий список
+    products = ProductVariant.objects.all()
+    return render(request, "orders/create_order.html", {"products": products})
+
+
+def orders_page(request):
+    orders = ProductionOrder.objects.all().order_by("-id")
+    products = ProductVariant.objects.all() # Берем ProductVariant
+
+    return render(request, "orders/orders.html", {
+        "orders": orders,
+        "products": products 
+    })
+
+
+def delete_order(request, id):
+
+    order = ProductionOrder.objects.get(id=id)
+
+    order.delete()
+
+    return redirect("/orders/")
