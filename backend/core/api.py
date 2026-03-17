@@ -361,9 +361,12 @@ def dashboard_api(request):
     """Returns data for all stations for the production dashboard"""
     stations = WorkStation.objects.filter(is_active=True).order_by('name')[:12]
     stations_data = []
-    
+
     for station in stations:
-        truck_run = TruckRun.objects.filter(workstation=station, is_active=True).last()
+        truck_run = TruckRun.objects.select_related("product").filter(
+            current_station=station.id,
+            is_active=True
+        ).last()
         
         if not truck_run:
             stations_data.append({
@@ -376,47 +379,55 @@ def dashboard_api(request):
                 'truck_name': '',
                 'current_worker': '',
                 'progress_percent': 0,
+                'current_task_name': '',  # <--- Добавили пустое поле для пустой станции
             })
             continue
-        
-        # Get steps and logs for this truck run
-        steps = AssemblyStep.objects.filter(workstation=station, product=truck_run.product).order_by('step_number')
-        logs = TaskLog.objects.filter(truck_run=truck_run).select_related('operator', 'assembly_step')
+
+        steps = AssemblyStep.objects.filter(
+            workstation=station,
+           
+        ).order_by('step_number')
+
+        logs = TaskLog.objects.filter(truck_run=truck_run).select_related('operator','assembly_step')
         log_map = {log.assembly_step.id: log for log in logs}
-        
-        # Current task progress (same logic as station detail: elapsed vs standard for the active task only)
+
         progress_percent = 0
-        current_task_color = 'BLUE'  # G/Y/R for progress bar; BLUE when no task or waiting
+        current_task_color = 'BLUE'
         current_worker = None
-        
+        current_task_name = ''  # <--- Инициализируем название задачи
+
         for step in steps:
             log = log_map.get(step.id)
-            if log:
-                if log.end_time:
-                    pass  # completed tasks not used for dashboard progress anymore
+
+            if log and not log.end_time:
+
+                if log.operator:
+                    current_worker = log.operator.name
+
+                std_sec = step.standard_duration_seconds or 180
+
+                start_utc = log.start_time if log.start_time.tzinfo else timezone.make_aware(log.start_time)
+                start_utc = start_utc.astimezone(dt_timezone.utc)
+                now_utc = datetime.now(dt_timezone.utc)
+                elapsed_sec = (now_utc - start_utc).total_seconds()
+
+                progress_percent = min(100.0, (elapsed_sec / std_sec) * 100)
+
+                # НОВАЯ ЛОГИКА ЦВЕТОВ: <50% Зеленый, 50-80% Желтый, >80% Красный
+                if progress_percent < 50:
+                    current_task_color = 'GREEN'
+                elif progress_percent < 80:
+                    current_task_color = 'YELLOW'
                 else:
-                    # Task in progress: progress = current task elapsed vs its standard (replicate station page)
-                    if log.operator:
-                        current_worker = log.operator.name
-                    std_sec = int(step.standard_duration_seconds or 300)
-                    start_utc = log.start_time if log.start_time.tzinfo else timezone.make_aware(log.start_time)
-                    start_utc = start_utc.astimezone(dt_timezone.utc)
-                    now_utc = datetime.now(dt_timezone.utc)
-                    elapsed_sec = (now_utc - start_utc).total_seconds()
-                    # Progress bar: % of current task (cap at 100)
-                    progress_percent = min(100.0, (elapsed_sec / std_sec) * 100) if std_sec else 0
-                    # Bar color: same 50% / 80% rule as station detail
-                    if elapsed_sec < std_sec * 0.5:
-                        current_task_color = 'GREEN'
-                    elif elapsed_sec < std_sec * 0.8:
-                        current_task_color = 'YELLOW'
-                    else:
-                        current_task_color = 'RED'
-                    break  # only one active task per run
-        
-        # Card border: keep a simple status (BLUE when active, GREEN when all done would need extra query)
+                    current_task_color = 'RED'
+
+                # Записываем название шага (например: "STEP 1: Install frame")
+                current_task_name = f"STEP {step.step_number}: {step.description}"
+
+                break
+
         status_color = current_task_color if progress_percent > 0 else 'BLUE'
-        
+
         stations_data.append({
             'station_name': station.name,
             'station_slug': station.slug,
@@ -428,6 +439,96 @@ def dashboard_api(request):
             'current_worker': current_worker or '',
             'progress_percent': round(progress_percent, 1),
             'current_task_color': current_task_color,
+            'current_task_name': current_task_name,  # <--- Передаем на фронтенд
+        })
+
+    return JsonResponse({'stations': stations_data})
+
+def worker_by_badge(request, badge):
+
+    try:
+        worker = Worker.objects.get(badge_id=badge)
+
+        return JsonResponse({
+            "name": worker.name,
+            "badge": worker.badge_id,
+            "role": worker.role
+        })
+
+    except Worker.DoesNotExist:
+
+        return JsonResponse({"error":"not found"})
+    
+
+
+@csrf_exempt
+def create_reorder(request):
+    try:
+        data = json.loads(request.body)
+        part_code = data.get("part")
+        
+        # Получаем количество, которое ввел кладовщик
+        try:
+            quantity_to_add = int(data.get("quantity", 0))
+        except (ValueError, TypeError):
+            quantity_to_add = 0
+
+        print(f"REORDER: {part_code}, QTY: {quantity_to_add}")
+
+        part = Part.objects.filter(code=part_code).first()
+
+        if not part:
+            return JsonResponse({"status": "error", "message": "Part not found"})
+
+        if quantity_to_add <= 0:
+            return JsonResponse({"status": "error", "message": "Введите количество больше 0"})
+
+        # 1. Создаем Purchase Order (история заказов для админки)
+        order = PurchaseOrder.objects.create(
+            part=part,
+            quantity=quantity_to_add,
+            status="COMPLETED" # Можем сразу ставить статус COMPLETED, раз пополняем склад
+        )
+
+        # 2. СРАЗУ ПОПОЛНЯЕМ СКЛАД (Inventory), чтобы конвейер мог работать
+        inventory = Inventory.objects.filter(part=part).first()
+        if inventory:
+            inventory.quantity += quantity_to_add
+            inventory.save()
+
+        return JsonResponse({
+            "status": "created",
+            "order_id": order.id,
+            "new_quantity": inventory.quantity if inventory else quantity_to_add
+        })
+
+    except Exception as e:
+        print("REORDER ERROR:", e)
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
         })
     
-    return JsonResponse({'stations': stations_data})
+
+
+
+
+
+@csrf_exempt
+def start_truck_api(request, station_slug):
+    """ Кнопка ACCEPT: Активирует трактор и привязывает его к станции """
+    data = json.loads(request.body)
+    truck_id = data.get('truck_id')
+    station = get_object_or_404(WorkStation, slug=station_slug)
+    
+    # Сбрасываем старые активные тракторы на этой станции
+    TruckRun.objects.filter(current_station=station.id, is_active=True).update(is_active=False)
+    
+    # Активируем новый
+    truck = get_object_or_404(TruckRun, id=truck_id)
+    truck.is_active = True
+    truck.current_station = station.id  # ОЧЕНЬ ВАЖНО: записываем ID станции
+    truck.save()
+    
+    return JsonResponse({'status': 'success'})
+
