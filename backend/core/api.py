@@ -8,56 +8,173 @@ from .models import WorkStation, Worker, TruckRun, TaskLog, AssemblyStep
 
 @csrf_exempt
 def next_task_api(request, station_slug):
-    """ Handles Space Bar: Closes current task, starts the next one in sequence """
+    """ Handles Space Bar: Closes current task, starts the next one """
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
     try:
         data = json.loads(request.body)
         worker_badge = data.get('operator_id')
-    except:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        incoming_face = data.get('face_descriptor') # <--- 1. Получаем лицо с планшета
+        
+        station = get_object_or_404(WorkStation, slug=station_slug)
+        worker = Worker.objects.filter(badge_id=worker_badge).first()
 
-    station = get_object_or_404(WorkStation, slug=station_slug)
-    worker = Worker.objects.filter(badge_id=worker_badge).first()
-    truck_run = TruckRun.objects.filter(workstation=station, is_active=True).last()
+        if not worker:
+            return JsonResponse({'error': 'worker_not_found'})
 
-    if not truck_run:
-        return JsonResponse({'status': 'no_truck'})
+        # ==========================================================
+        # === ШАГ 5: ПРОВЕРКА ЛИЦА (FACE VERIFICATION) =============
+        # ==========================================================
+        if not worker.face_descriptor:
+            return JsonResponse({'error': f'У рабочего {worker.name} нет слепка лица в базе! Зайдите в Админку и оцифруйте его.'})
+            
+        if not incoming_face:
+            return JsonResponse({'error': 'С камеры не пришли данные лица. Попробуйте еще раз.'})
 
-    active_task = TaskLog.objects.filter(truck_run=truck_run, end_time__isnull=True).first()
-    last_step_num = None  # no step completed yet
-
-    if active_task:
-        active_task.end_time = timezone.now()
-        duration = (active_task.end_time - active_task.start_time).total_seconds()
-        std_time = active_task.assembly_step.standard_duration_seconds
-
-        if duration <= std_time:
-            active_task.status_color = 'GREEN'
-        elif duration <= std_time * 1.2:
-            active_task.status_color = 'YELLOW'
+        # Считаем Евклидово расстояние между лицом с камеры и лицом из базы
+        if len(incoming_face) == len(worker.face_descriptor):
+            sum_sq = sum((a - b) ** 2 for a, b in zip(incoming_face, worker.face_descriptor))
+            distance = math.sqrt(sum_sq)
         else:
-            active_task.status_color = 'RED'
-        active_task.save()
-        last_step_num = active_task.assembly_step.step_number
+            distance = 1.0 # Если массивы разной длины - 100% ошибка
 
-    # Next step: first step when none started, otherwise first step after last_step_num
-    steps_qs = AssemblyStep.objects.filter(
-        workstation=station, product=truck_run.product
-    ).order_by('step_number')
-    if last_step_num is None:
-        next_step = steps_qs.first()
-    else:
-        next_step = steps_qs.filter(step_number__gt=last_step_num).first()
+        # Порог (Threshold). Меньше 0.55 -> это тот же человек.
+        if distance > 0.55:
+            # Лицо не совпало! Блокируем операцию.
+            return JsonResponse({'error': f'ВНИМАНИЕ! Лицо не совпадает с бейджем ({worker.name}). Доступ запрещен!'})
+        # ==========================================================
 
-    if not next_step:
-        return JsonResponse({'status': 'complete'})
 
-    TaskLog.objects.create(
-        truck_run=truck_run, assembly_step=next_step, operator=worker, start_time=timezone.now()
-    )
-    return JsonResponse({'status': 'working', 'step_number': next_step.step_number})
+        # Ищем активный трактор именно по current_station
+        truck_run = TruckRun.objects.filter(
+            current_station=station.id,
+            is_active=True
+        ).last()
+
+        if not truck_run:
+            return JsonResponse({'status': 'no_truck'})
+
+        # Загружаем шаги для этой станции
+        # Загружаем шаги для этой станции ИМЕННО ДЛЯ ЭТОГО ТРАКТОРА
+        if truck_run.product:
+            steps = AssemblyStep.objects.filter(workstation=station, product=truck_run.product).order_by('step_number')
+        else:
+            steps = AssemblyStep.objects.filter(workstation=station).order_by('step_number')
+        active_task = TaskLog.objects.filter(truck_run=truck_run, end_time__isnull=True).first()
+
+        if active_task:
+            active_task.end_time = timezone.now()
+            
+            # --- Логика списания деталей (Backflush) ---
+            step_parts = StepPart.objects.filter(assembly_step=active_task.assembly_step)
+            for sp in step_parts:
+                inventory = Inventory.objects.filter(part_id=sp.part_id).first()
+                if inventory and inventory.quantity >= sp.quantity:
+                    inventory.quantity -= sp.quantity
+                    inventory.save()
+                    
+                    # --- TELEGRAM УВЕДОМЛЕНИЯ В ТВОЕМ ФОРМАТЕ ---
+                    status = inventory.stock_status()
+                    if status in ["YELLOW", "RED"]:
+                        time_str = timezone.now().astimezone().strftime("%d.%m %H:%M")
+                        operator_name = worker.name if worker else "Unknown"
+                        step_desc = active_task.assembly_step.description
+                        
+                        if status == "YELLOW":
+                            msg = f"⚠ LOW STOCK\n\nPart: {inventory.part.code}\nStock: {inventory.quantity}\n\nStation: {station.name}\nStep: {step_desc}\nOperator: {operator_name}\nTime: {time_str}"
+                        else:
+                            msg = f"🚨 CRITICAL STOCK\n\nPart: {inventory.part.code}\nStock: {inventory.quantity}\n\nStation: {station.name}\nStep: {step_desc}\nOperator: {operator_name}\nTime: {time_str}\n\nCALL WAREHOUSE"
+                        
+                        send_telegram_message(msg)
+                    
+                    PartConsumption.objects.create(
+                        part=sp.part, truck_run=truck_run, 
+                        assembly_step=active_task.assembly_step, quantity=sp.quantity
+                    )
+
+            # Расчет цвета (G/Y/R)
+            duration = (active_task.end_time - active_task.start_time).total_seconds()
+            std_time = active_task.assembly_step.standard_duration_seconds or 180
+            if duration <= std_time: active_task.status_color = 'GREEN'
+            elif duration <= std_time * 1.2: active_task.status_color = 'YELLOW'
+            else: active_task.status_color = 'RED'
+            active_task.save()
+            
+            last_step_num = active_task.assembly_step.step_number
+        else:
+            # Если активных задач нет, смотрим последнюю завершенную ИМЕННО НА ЭТОЙ СТАНЦИИ
+            last_done = TaskLog.objects.filter(
+                truck_run=truck_run, 
+                assembly_step__workstation=station, 
+                end_time__isnull=False
+            ).order_by('end_time').last()
+            last_step_num = last_done.assembly_step.step_number if last_done else 0
+
+        # Определяем следующий шаг
+        next_step = steps.filter(step_number__gt=last_step_num).first()
+        
+        if not next_step:
+            # === ТРАКТОР ПРОШЕЛ ВСЕ ШАГИ НА ЭТОЙ СТАНЦИИ ===
+            truck_run.is_active = False 
+            
+            # Ищем следующую станцию
+            next_station = WorkStation.objects.filter(id__gt=station.id, is_active=True).order_by('id').first()
+            
+            if next_station:
+                truck_run.workstation = next_station
+                truck_run.current_station = next_station.id 
+            else:
+                truck_run.is_finished = True
+                
+            truck_run.save()
+            return JsonResponse({'status': 'complete'})
+
+        # === ПРОВЕРКА СКЛАДА ПЕРЕД НАЧАЛОМ СЛЕДУЮЩЕГО ШАГА ========
+        missing_parts = []
+        next_step_parts = StepPart.objects.filter(assembly_step=next_step)
+        
+        for sp in next_step_parts:
+            inventory = Inventory.objects.filter(part_id=sp.part_id).first()
+            current_qty = inventory.quantity if inventory else 0
+            if current_qty < sp.quantity:
+                missing_parts.append(f"{sp.part.code} (Надо: {sp.quantity}, Есть: {current_qty})")
+                
+        if missing_parts:
+            time_str = timezone.now().astimezone().strftime("%d.%m %H:%M")
+            operator_name = worker.name if worker else "Unknown"
+            missing_str = "\n".join(missing_parts)
+            
+            msg = f"⛔ PRODUCTION STOPPED!\n\nCan't start next step.\nStation: {station.name}\nStep: {next_step.description}\nOperator: {operator_name}\nTime: {time_str}\n\nMissing parts:\n{missing_str}\n\nFILL WAREHOUSE FIRST!"
+            # send_telegram_message(msg)
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': f"Деталей нет! Не хватает: {', '.join(missing_parts)}.\n\nЗаполните склад!"
+            })
+
+        if not active_task:
+            # СТАРТУЕМ НОВУЮ ЗАДАЧУ
+            TaskLog.objects.create(
+                truck_run=truck_run, assembly_step=next_step, 
+                operator=worker, start_time=timezone.now()
+            )
+            return JsonResponse({'status': 'started', 'step_number': next_step.step_number})
+            
+        timer_standard = next_step.standard_duration_seconds or 180
+        
+        return JsonResponse({
+            'status': 'step_ready', 
+            'message': 'Шаг завершен. Выберите оператора для следующего этапа.',
+            'next_step_number': next_step.step_number,
+            'next_step_description': next_step.description,
+            'current_task_start_time': None,
+            'current_task_elapsed_seconds': 0,
+            'current_task_standard_seconds': timer_standard
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
 def station_data_api(request, station_slug):
