@@ -142,22 +142,38 @@ class TruckRun(models.Model):
 
 
 class TaskLog(models.Model):
+
     STATUS_COLORS = [
         ('GREEN', 'On Time'),
         ('YELLOW', 'Late'),
         ('RED', 'Very Late / Issue'),
     ]
 
-    truck_run = models.ForeignKey(TruckRun, on_delete=models.CASCADE, related_name='logs')
+    truck_run = models.ForeignKey(
+        TruckRun,
+        on_delete=models.CASCADE,
+        related_name='logs'
+    )
+
     assembly_step = models.ForeignKey(AssemblyStep, on_delete=models.CASCADE)
-    operator = models.ForeignKey(Worker, on_delete=models.SET_NULL, null=True) # Link to real Worker model
-    
+
+    operator = models.ForeignKey(
+        Worker,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
+
     was_intervened = models.BooleanField(default=False)
-    
-    # We store the final status color for easy querying
-    status_color = models.CharField(max_length=10, choices=STATUS_COLORS, null=True, blank=True)
+
+    status_color = models.CharField(
+        max_length=10,
+        choices=STATUS_COLORS,
+        null=True,
+        blank=True
+    )
 
     class Meta:
         ordering = ['start_time']
