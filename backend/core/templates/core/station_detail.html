@@ -1,352 +1,926 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ station.name }} - MES</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #2c3e50; margin: 0; color: white; overflow: hidden; }
-        
-        /* Layout */
-        .header { background: #1a252f; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; }
-        .main-grid { display: grid; grid-template-columns: 250px 1fr 350px; height: calc(100vh - 60px); }
-        
-        /* Columns */
-        .col-users { background: #34495e; padding: 10px; border-right: 1px solid #2c3e50; display: flex; flex-direction: column; }
-        .col-active { background: #ecf0f1; color: #333; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .col-list { background: #2c3e50; overflow-y: auto; padding: 0; }
-        
-        /* Truck Info Section */
-        .truck-info { margin-top: 20px; padding-top: 20px; border-top: 2px solid #2c3e50; }
-        .truck-info-title { font-size: 0.9em; color: #bdc3c7; margin-bottom: 10px; text-transform: uppercase; }
-        .truck-image { width: 100%; max-width: 200px; border-radius: 8px; margin-bottom: 10px; border: 2px solid #2c3e50; }
-        .truck-vin { background: #2c3e50; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 0.9em; color: #3498db; text-align: center; word-break: break-all; }
+<script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ station.name }} - MES</title>
 
-        /* Components */
-        .user-btn { display: block; width: 100%; padding: 15px; margin-bottom: 10px; background: #2c3e50; color: #bdc3c7; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 1.1em; cursor: pointer; text-align: left; }
-        .user-btn.active { background: #3498db; color: white; border-color: #3498db; }
-        .user-btn.brigadir { border-color: #e74c3c; color: #e74c3c; }
-        
-        /* Task List */
-        .category-header { background: #1a252f; padding: 10px; font-weight: bold; color: #bdc3c7; text-transform: uppercase; font-size: 0.9em; position: sticky; top: 0; }
-        .task-item { padding: 8px 15px; border-bottom: 1px solid #34495e; cursor: pointer; }
-        .task-item:hover { background: #34495e; }
-        .task-item.active { background: #3498db; color: white; }
-        
-        .task-grid {
-            display: grid;
-            grid-template-columns: 30px 2fr 1fr 1fr auto;
-            align-items: center;
-            gap: 10px;
-        }
-        .task-grid span {
-            text-overflow: ellipsis;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-        
-        /* Status Colors */
-        .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; }
-        .dot-GREEN { background: #2ecc71; }
-        .dot-YELLOW { background: #f1c40f; }
-        .dot-RED { background: #e74c3c; }
-        .dot-PENDING { background: #7f8c8d; }
+<style>
 
-        /* Big Active Screen */
-        .big-step { font-size: 3em; font-weight: bold; margin: 20px 0; }
-        .timer-box { font-size: 4em; font-family: monospace; font-weight: bold; color: #2c3e50; }
-        .progress-bar { width: 100%; height: 30px; background: #bdc3c7; border-radius: 15px; overflow: hidden; margin-top: 20px; }
-        .progress-fill { height: 100%; width: 0%; background: #27ae60; transition: width 0.2s; }
+.truck-accepted{
+background:#27ae60 !important;
+}
 
-        /* Header Progress */
-        .header-progress-bar {
-            flex-grow: 1;
-            height: 20px;
-            background-color: #34495e;
-            border-radius: 10px;
-            margin: 0 20px;
-            overflow: hidden;
-        }
-        .header-progress-fill {
-            height: 100%;
-            width: 0%;
-            background-color: #27ae60;
-            transition: width 0.5s ease-in-out;
-        }
+.truck-locked{
+background:#c0392b !important;
+}
 
+body{
+font-family:'Segoe UI',sans-serif;
+background-color:#2c3e50;
+margin:0;
+color:white;
+overflow:hidden;
+}
 
-        /* Reset Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; color: black; padding: 30px; border-radius: 10px; text-align: center; }
-        .pin-input { font-size: 2em; width: 150px; text-align: center; padding: 10px; margin: 10px; letter-spacing: 10px; }
-    </style>
+.header{
+background:#1a252f;
+padding:10px 20px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+height:60px;
+}
+
+.truck-bar{
+background:#243647;
+padding:10px 20px;
+display:flex;
+gap:10px;
+overflow-x:auto;
+border-bottom:2px solid #1a252f;
+}
+
+.truck-card{
+background:#3498db;
+padding:10px 20px;
+border-radius:6px;
+cursor:pointer;
+white-space:nowrap;
+font-weight:bold;
+}
+
+.truck-card:hover{
+background:#2980b9;
+}
+
+.main-grid{
+display:grid;
+grid-template-columns:250px 1fr 500px; /* Заменили 350px на 550px */
+height:calc(100vh - 120px);
+}
+
+.col-users{
+background:#34495e;
+padding:10px;
+border-right:1px solid #2c3e50;
+display:flex;
+flex-direction:column;
+}
+
+.col-active{
+background:#ecf0f1;
+color:#333;
+padding:20px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+text-align:center;
+}
+
+.col-list{
+background:#2c3e50;
+overflow-y:auto;
+padding:0;
+padding-bottom: 100px;
+}
+
+.truck-info{
+margin-top:0px;       /* Убрали большой отступ */
+padding-top:10px;     /* Сделали покомпактнее */
+border-top:2px solid #2c3e50;
+}
+
+.truck-image{
+width:100%;
+max-width:200px;
+border-radius:8px;
+margin-bottom:10px;
+border:2px solid #2c3e50;
+}
+
+.truck-vin{
+background:#2c3e50;
+padding:10px;
+border-radius:5px;
+font-family:monospace;
+font-size:0.9em;
+color:#3498db;
+text-align:center;
+word-break:break-all;
+}
+
+.user-btn{
+display:block;
+width:100%;
+padding:15px;
+margin-bottom:10px;
+background:#2c3e50;
+color:#bdc3c7;
+border:2px solid #bdc3c7;
+border-radius:8px;
+font-size:1.1em;
+cursor:pointer;
+text-align:left;
+}
+
+.user-btn.active{
+background:#3498db;
+color:white;
+border-color:#3498db;
+}
+
+.big-step{
+font-size:2.2em;
+font-weight:bold;
+margin:20px 0;
+}
+
+.timer-box{
+font-size:4em;
+font-family:monospace;
+font-weight:bold;
+color:#2c3e50;
+}
+
+.progress-bar{
+width:100%;
+height:30px;
+background:#bdc3c7;
+border-radius:15px;
+overflow:hidden;
+margin-top:20px;
+}
+
+.progress-fill{
+height:100%;
+width:0%;
+background:#27ae60;
+transition:width 0.3s;
+}
+
+</style>
+
 </head>
+
 <body>
 
-    <div class="header">
-        <div>{{ station.name }}</div>
-        <div class="header-progress-bar">
-            <div id="header-progress" class="header-progress-fill"></div>
+<div class="header">
+<div>{{ station.name }}</div>
+
+<div style="display:flex;gap:10px">
+<a href="{% url 'production_dashboard' %}"
+style="background:#3498db;color:white;border:none;padding:10px 20px;border-radius:4px;text-decoration:none">
+Dashboard
+</a>
+</div>
+</div>
+
+<div class="truck-bar">
+
+    {% for truck in available_trucks %}
+    <div class="truck-card" id="truck-{{truck.id}}">
+
+        <div onclick="startTruck('{{ truck.id }}')" style="cursor:pointer; text-align:center;">
+            🚜 <b>{% if truck.product %}{{ truck.product.name }}{% else %}Unknown Model{% endif %}</b><br>
+            <small style="font-weight:normal;">VIN: {{ truck.truck_serial_number }}</small>
         </div>
-        <div style="display: flex; gap: 10px;">
-            <a href="{% url 'production_dashboard' %}" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; text-decoration: none;">📊 Dashboard</a>
-            <button onclick="showResetModal()" style="background: #c0392b; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">🛑 RESET TRUCK</button>
-        </div>
+
+        <button 
+            id="accept-{{truck.id}}"
+            onclick="acceptTruck('{{truck.id}}')"
+            style="
+            display:none;
+            margin-top:8px;
+            width:100%;
+            padding:6px;
+            background:#27ae60;
+            border:none;
+            border-radius:4px;
+            color:white;
+            font-weight:bold;
+            cursor:pointer;
+            ">
+            ACCEPT
+        </button>
+
     </div>
-
-    <div class="main-grid">
-        <div class="col-users">
-            <div id="user-list"></div>
-            <div class="truck-info" id="truck-info">
-                <div class="truck-info-title">Current Truck</div>
-                <div id="truck-image-container">
-                    {% if product and product.image %}
-                        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="truck-image" onerror="this.style.display='none';">
-                    {% else %}
-                        <div style="width: 100%; height: 120px; background: #2c3e50; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #7f8c8d;">No Image</div>
-                    {% endif %}
-                </div>
-                <div class="truck-vin" id="truck-vin">{% if truck_serial_number %}{{ truck_serial_number }}{% else %}-{% endif %}</div>
-            </div>
-        </div>
-
-        <div class="col-active">
-            <div style="font-size: 1.2em; color: #7f8c8d;">CURRENT TASK</div>
-            <div class="big-step" id="active-desc">WAITING...</div>
-            <div class="timer-box" id="timer">00:00</div>
-            <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
-            <div style="margin-top: 20px; color: #7f8c8d;">Press SPACE to Complete</div>
-            <button type="button" id="complete-task-btn" onclick="completeCurrentTask(event)" style="margin-top: 15px; padding: 18px 40px; font-size: 1.3em; background: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">✓ Complete Task</button>
-        </div>
-
-        <div class="col-list" id="task-list">
-            </div>
+    {% empty %}
+    <div style="color:#95a5a6">
+        No tractors available
     </div>
+    {% endfor %}
 
-    <div id="resetModal" class="modal">
-        <div class="modal-content">
-            <h2>🔐 BRIGADIER RESET</h2>
-            <p>Enter PIN to reset truck progress:</p>
-            <input type="password" id="pinInput" class="pin-input" maxlength="4" placeholder="****">
-            <br><br>
-            <button onclick="confirmReset()" style="padding: 10px 30px; background: #c0392b; color: white; border: none; font-size: 1.2em;">RESET</button>
-            <button onclick="closeModal()" style="padding: 10px 30px;">CANCEL</button>
-        </div>
-    </div>
+</div>
 
-    <script>
-        const STATION_SLUG = "{{ station.slug }}";
-        let currentUser = null;
-        let activeTaskDuration = 300;
-        let timerStart = null;
-        let timerInt = null;
+<div class="main-grid">
 
-        // --- INIT ---
-        function loadData() {
-            fetch(`/api/station/${STATION_SLUG}/data/`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'no_truck') {
-                    window.location.href = "{% url 'truck_selection' %}";
-                    return;
-                }
-                renderUsers(data.workers);
-                renderTasks(data.tasks);
-                renderTruckInfo(data);
-                updateHeaderProgress(data.progress_percent, data.is_late, data.is_very_late);
-                
-                // Auto-select first user if none
-                if (!currentUser && data.workers.length > 0) selectUser(data.workers[0].badge_id);
-            });
-        }
-        setInterval(loadData, 5000); // Poll every 5s for updates from other users
-        loadData();
+<div class="col-users">
 
-        // --- RENDERING ---
-        function renderUsers(workers) {
-            const container = document.getElementById('user-list');
-            // Keep current user selection visual
-            container.innerHTML = workers.map(w => `
-                <button onclick="selectUser('${w.badge_id}')" 
-                        class="user-btn ${w.role === 'BRIGADIR' ? 'brigadir' : ''} ${currentUser === w.badge_id ? 'active' : ''}">
-                    👤 ${w.name}<br>
-                    <small>${w.badge_id}</small>
-                </button>
-            `).join('');
-        }
+<div id="user-list"></div>
+
+<button onclick="startQRScanner()"
+style="width:100%;padding:10px;background:#27ae60;border:none;color:white;border-radius:6px;margin-bottom:10px">
+Scan Worker QR
+</button>
+
+<div id="qr-reader" style="width:100%"></div>
+
+<div class="truck-info">
+
+<div id="truck-image-container">
+
+<div class="truck-image"
+style="height:120px;background:#2c3e50;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#7f8c8d">
+No Image
+</div>
+
+</div>
+
+<div class="truck-vin">-</div>
+
+</div>
+
+</div>
+
+<div class="col-active" style="position: relative;">
+
+    <div id="face-scanner-widget" style="
+        position: relative; 
+        margin-bottom: 40px;
+        width: 240px; 
+        height: 240px; 
+        background: #000; 
+        border: 4px solid #e74c3c;
+        border-radius: 12px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    ">
+        <video id="stationVideo" width="240" height="240" autoplay muted style="position: absolute; top:0; left:0; object-fit: cover; transform: scaleX(-1);"></video>
+        <canvas id="stationCanvas" width="240" height="240" style="position: absolute; top:0; left:0; transform: scaleX(-1);"></canvas>
         
-        function renderTruckInfo(data) {
-            const vinContainer = document.getElementById('truck-vin');
-            const imageContainer = document.getElementById('truck-image-container');
-            
-            if (data.truck_serial_number) {
-                vinContainer.textContent = data.truck_serial_number;
-            } else {
-                vinContainer.textContent = '-';
-            }
-            
-            if (data.truck_image_url) {
-                imageContainer.innerHTML = `<img src="${data.truck_image_url}" alt="${data.truck_name || 'Truck'}" class="truck-image" onerror="this.style.display='none';">`;
-            } else {
-                imageContainer.innerHTML = '<div style="width: 100%; height: 120px; background: #2c3e50; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #7f8c8d;">No Image</div>';
-            }
+        <div id="target-guideline" style="
+            position: absolute; 
+            top: 30px; 
+            left: 50px; 
+            width: 140px; 
+            height: 160px; 
+            border: 3px dashed #e74c3c; 
+            border-radius: 10px; 
+            box-sizing: border-box; 
+            pointer-events: none; 
+            transition: border-color 0.3s;
+        "></div>
+        
+        <div id="face-status-text" style="position: absolute; bottom: 8px; width: 100%; text-align: center; color: white; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px black; z-index: 10;">
+            Инициализация камеры...
+        </div>
+    </div>
+
+    <div class="big-step" id="active-desc">
+        WAITING...
+    </div>
+
+    <div class="timer-box" id="timer">
+        00:00
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress"></div>
+    </div>
+
+
+    <button onclick="completeCurrentTask()"
+        style="margin-top:15px;padding:18px 40px;font-size:1.3em;background:#27ae60;color:white;border:none;border-radius:8px">
+        Complete Task
+    </button>
+
+</div>
+
+<div class="col-list" id="task-list"></div>
+
+</div>
+
+<script>
+
+const STATION_SLUG="{{ station.slug }}";
+let currentUser=null;
+let timerInterval=null;
+let selectedTruck = null;
+
+function startTruck(id){
+
+selectedTruck = id;
+
+document.querySelectorAll('[id^="accept-"]').forEach(btn=>{
+btn.style.display="none";
+});
+
+document.getElementById("accept-"+id).style.display="block";
+
+document.getElementById("active-desc").innerText =
+"Press ACCEPT to start tractor";
+
+}
+
+function acceptTruck(id){
+
+fetch(`/api/station/${STATION_SLUG}/start-truck/`,{
+method:'POST',
+headers:{
+'Content-Type':'application/json'
+},
+body:JSON.stringify({
+truck_id:id
+})
+})
+.then(response=>response.json())
+.then(data=>{
+
+console.log(data);
+
+selectedTruck=id;
+
+lockOtherTrucks(id);
+
+loadData();
+
+});
+
+}
+
+function loadData(){
+    
+    fetch(`/api/station/${STATION_SLUG}/data/`)
+    .then(r=>r.json())
+    .then(data=>{
+        if(data.current_operator_badge){
+            currentUser = data.current_operator_badge;
         }
 
-        function formatTime(seconds) {
-            if (isNaN(seconds) || seconds === null) return '-';
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
+        renderUsers(data.workers || []);
+        renderTasks(data.tasks || [], data.current_step_id);
 
-        function renderTasks(tasks) {
-            const container = document.getElementById('task-list');
-            let html = '';
-            let currentCat = '';
+       /* SHOW ACTIVE TRUCK */
 
-            html += `<div class="category-header task-grid" style="padding-left: 15px; padding-right: 15px;">
-                        <span>#</span><span>Operator</span><span>Actual</span><span>Standard</span><span></span>
-                    </div>`;
+        if(data.truck_serial_number){
+
+            // 1. Блокируем остальные и создаем синюю кнопку для активного трактора
+            lockOtherTrucks(data.current_truck_id, data);
+
+            // 2. Находим наш синий прямоугольник
+            let activeTruckCard = document.getElementById("truck-" + data.current_truck_id);
             
-            tasks.forEach(task => {
-                if (task.category !== currentCat) {
-                    html += `<div class="category-header">${task.category}</div>`;
-                    currentCat = task.category;
+            if (activeTruckCard) {
+                let textContainer = activeTruckCard.querySelector("div");
+                if (textContainer) {
+                    // ЕСЛИ ЕСТЬ МОДЕЛЬ: Пишем Модель сверху (жирным), а VIN снизу
+                    if (data.truck_model_name) {
+                        textContainer.innerHTML = `🚜 <b>${data.truck_model_name}</b><br><small>VIN: ${data.truck_serial_number}</small>`;
+                    } else {
+                        // Если модели вдруг нет, оставляем как было
+                        textContainer.innerHTML = `🚜 ${data.truck_serial_number}<br><small>Active Truck</small>`;
+                    }
                 }
-                
-                const isRunning = task.status === 'IN_PROGRESS';
-                if (isRunning) updateActiveScreen(task);
+            }
 
-                html += `
-                    <div class="task-item ${isRunning ? 'active' : ''}" onclick="manualSelect(${task.id})">
-                        <div class="task-grid">
-                            <span>${task.step_number}</span>
-                            <span>${task.operator_id || '-'}</span>
-                            <span>${formatTime(task.completion_time)}</span>
-                            <span>${formatTime(task.standard_time)}</span>
-                            <span class="status-dot dot-${task.color || 'PENDING'}"></span>
-                        </div>
+            // 3. Выводим картинку слева внизу
+            if(data.truck_image_url){
+                let imgContainer = document.getElementById("truck-image-container");
+                if(imgContainer){
+                    imgContainer.innerHTML = `<img src="${data.truck_image_url}" class="truck-image" style="max-width:100%; border-radius:8px;">`;
+                }
+            }
+
+        }
+
+        if(data.current_step_id){
+            // 1. ЗАДАЧА В РАБОТЕ (Оранжевый заголовок, темное описание)
+            const step = data.tasks.find(t => t.id === data.current_step_id);
+            if(!step) return;
+
+            // Увеличил лимит до 90 символов, чтобы влезало больше смысла
+            let descSnippet = step.description || "";
+            if (descSnippet.length > 90) descSnippet = descSnippet.substring(0, 90) + "...";
+
+            document.getElementById("active-desc").innerHTML = `
+                <div style="font-size: 0.7em; color: #d35400; line-height: 1.2; text-transform: uppercase;">
+                    ${step.heading || "ЗАДАЧА " + step.step_number}
+                </div>
+                <div style="font-size: 0.5em; margin-top: 8px; color: #2c3e50; line-height: 1.4; font-weight: normal; white-space: normal;">
+                    ${descSnippet}
+                </div>
+            `;
+            
+            startTimer(data.current_task_start_time, data.current_task_standard_seconds || 180);
+            
+        } else if (data.truck_serial_number) {
+            // 2. ТРАКТОР ЖДЕТ СТАРТА (Зеленый заголовок, темное описание)
+            const nextStep = data.tasks.find(t => t.status === 'PENDING');
+            
+            if (nextStep) {
+                let descSnippet = nextStep.description || "";
+                if (descSnippet.length > 90) descSnippet = descSnippet.substring(0, 90) + "...";
+
+                document.getElementById("active-desc").innerHTML = `
+                    <div style="font-size: 0.4em; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">
+                        PRESS SPACE TO START:
+                    </div>
+                    <div style="font-size: 0.7em; color: #27ae60; line-height: 1.2; text-transform: uppercase;">
+                        ${nextStep.heading || "ЗАДАЧА " + nextStep.step_number}
+                    </div>
+                    <div style="font-size: 0.5em; margin-top: 8px; color: #2c3e50; line-height: 1.4; font-weight: normal; white-space: normal;">
+                        ${descSnippet}
                     </div>
                 `;
-            });
-            container.innerHTML = html;
-        }
-
-        function updateHeaderProgress(percent, is_late, is_very_late) {
-            const bar = document.getElementById('header-progress');
-            bar.style.width = percent + '%';
-            if (is_very_late) {
-                bar.style.backgroundColor = '#e74c3c';
-            } else if (is_late) {
-                bar.style.backgroundColor = '#f1c40f';
             } else {
-                bar.style.backgroundColor = '#27ae60';
+                document.getElementById("active-desc").innerHTML = "<div style='color:#27ae60;'>ALL TASKS COMPLETED!</div>";
             }
+            
+        } else {
+            // 3. ТРАКТОРА НЕТ НА СТАНЦИИ
+            document.getElementById("active-desc").innerHTML = "<div style='color:#7f8c8d;'>WAITING...</div>";
         }
 
-        function updateActiveScreen(task) {
-            document.getElementById('active-desc').innerText = task.description;
-            activeTaskDuration = task.standard_time;
-            if (!timerInt) startTimer(); // Only start local timer if not running
-        }
+    });
 
-        // --- ACTIONS ---
-        function selectUser(id) {
-            currentUser = id;
-            loadData(); // Re-render to show active state
-        }
+}
 
-        function manualSelect(taskId) {
-            if (!currentUser) return alert("Select a user first!");
-            fetch(`/api/station/${STATION_SLUG}/select/`, {
-                method: 'POST', 
-                body: JSON.stringify({step_id: taskId, worker_id: currentUser})
-            }).then(() => {
-                loadData();
-                resetTimer();
-            });
-        }
+function renderUsers(workers){
 
-        function resetTimer() {
-            clearInterval(timerInt);
-            timerInt = null;
-            document.getElementById('progress').style.width = '0%';
-        }
+const container=document.getElementById('user-list');
 
-        function startTimer() {
-            timerStart = Date.now();
-            timerInt = setInterval(() => {
-                const elapsed = (Date.now() - timerStart) / 1000;
-                const pct = Math.min((elapsed / activeTaskDuration) * 100, 100);
-                document.getElementById('progress').style.width = pct + '%';
-                
-                // Color logic
-                const bar = document.getElementById('progress');
-                if(pct < 50) bar.style.backgroundColor = '#27ae60';
-                else if(pct < 80) bar.style.backgroundColor = '#f1c40f';
-                else bar.style.backgroundColor = '#e74c3c';
-                
-                // Time Text
-                const mins = Math.floor(elapsed / 60);
-                const secs = Math.floor(elapsed % 60);
-                document.getElementById('timer').innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
-            }, 100);
-        }
+container.innerHTML=workers.map(w=>`
+<button onclick="selectUser('${w.badge_id}')"
+class="user-btn ${currentUser===w.badge_id?'active':''}">
+${w.name}<br>
+<small>${w.badge_id}</small>
+</button>
+`).join('');
 
-        // --- RESET LOGIC ---
-        function showResetModal() { document.getElementById('resetModal').style.display = 'flex'; }
-        function closeModal() { document.getElementById('resetModal').style.display = 'none'; }
+}
+
+function renderTasks(tasks, currentStepId){
+    const container = document.getElementById("task-list");
+    
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = "<div style='padding:20px; color:#bdc3c7;'>Нет задач...</div>";
+        return;
+    }
+
+    // 1. ПРОСТАЯ ГРУППИРОВКА
+    const grouped = {};
+    tasks.forEach(t => {
+        const groupName = t.heading || "ПРОЧИЕ РАБОТЫ"; 
+        if (!grouped[groupName]) grouped[groupName] = [];
+        grouped[groupName].push(t);
+    });
+
+    let html = `
+        <div style="display:flex; padding:10px 15px; font-size:0.75em; color:#7f8c8d; font-weight:bold; border-bottom:1px solid #34495e; text-transform:uppercase;">
+            <div style="width:25px;">#</div>
+            <div style="flex:1;">ОПИСАНИЕ РАБОТ / ОПЕРАТОР</div>
+            <div style="width:90px; text-align:right; padding-right:15px;">ВРЕМЯ</div>
+            <div style="width:20px;"></div>
+        </div>
+    `;
+
+    const formatTime = (sec) => {
+        if (isNaN(sec)) return "00:00";
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        return `${m}:${s}`;
+    };
+
+    // 2. Рисуем интерфейс
+    for (const [groupName, groupTasks] of Object.entries(grouped)) {
         
-        function confirmReset() {
-            const pin = document.getElementById('pinInput').value;
-            fetch(`/api/station/${STATION_SLUG}/reset/`, {
-                method: 'POST',
-                body: JSON.stringify({pin: pin})
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    closeModal();
-                    loadData();
-                    resetTimer();
-                    document.getElementById('active-desc').innerText = "TRUCK RESET";
+        html += `
+        <div style="background:#2ecc71; padding:8px 15px; font-size:0.85em; font-weight:bold; color:#000000; text-transform:uppercase; border-top: 2px solid #27ae60; border-bottom: 2px solid #27ae60;">
+            ${groupName}
+        </div>`;
+
+        let localStepCounter = 1;
+
+        groupTasks.forEach(t => {
+            const isCurrent = t.id === currentStepId;
+            const bg = isCurrent ? "#34495e" : "transparent"; 
+            
+            let timeDisplay = formatTime(t.standard_sec);
+            if (t.status === 'DONE' || t.status === 'IN_PROGRESS') {
+                timeDisplay = `${formatTime(t.time_spent_sec)} / ${formatTime(t.standard_sec)}`;
+            }
+
+            let circleColor = "transparent"; 
+            let circleBorder = "1px solid #7f8c8d";
+            
+            if (t.status === 'IN_PROGRESS' || t.status === 'DONE') {
+                let percent = t.standard_sec > 0 ? (t.time_spent_sec / t.standard_sec) * 100 : 0;
+                if (percent < 50) {
+                    circleColor = "#27ae60"; circleBorder = "1px solid #2ecc71";
+                } else if (percent < 80) {
+                    circleColor = "#f1c40f"; circleBorder = "1px solid #f39c12";
                 } else {
-                    alert("WRONG PIN!");
+                    circleColor = "#c0392b"; circleBorder = "1px solid #e74c3c";
                 }
-            });
-        }
-        
-        // --- COMPLETE TASK (SPACE or button for touch screens) — same behavior: start first task if WAITING, else complete current and go to next ---
-        function completeCurrentTask(e) {
-            if (e) {
-                e.preventDefault();
-                e.stopPropagation();
             }
-            fetch(`/api/station/${STATION_SLUG}/next-task/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({operator_id: currentUser})
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'complete') {
-                    window.location.href = "{% url 'truck_selection' %}";
-                } else {
-                    loadData();
-                    resetTimer();
-                }
-            })
-            .catch(function() {
-                // On error do not leave page
-            });
-        }
-        
-        document.addEventListener('keydown', e => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                completeCurrentTask(null);
+
+            // Текст задачи и оператор на новой строке
+            let textToShow = t.description || "Нет описания";
+            if ((t.status === 'DONE' || t.status === 'IN_PROGRESS') && t.operator_name !== "-") {
+                // Добавили DIV с margin-top, чтобы рабочий всегда был с новой строки
+                textToShow += `<div style="color:#3498db; font-weight:bold; font-size:0.9em; margin-top:4px;">👷‍♂️ ${t.operator_name}</div>`;
             }
+
+            const textColor = t.status === 'PENDING' ? '#95a5a6' : '#ffffff';
+
+            html += `
+            <div style="display:flex; align-items:flex-start; padding:12px 15px; background:${bg}; border-bottom:1px solid #34495e; font-size:0.85em;">
+                
+                <div style="width:25px; flex-shrink:0; color:#95a5a6; font-weight:bold; font-size:1.1em; padding-top:2px;">${localStepCounter}</div>
+                
+                <div style="flex:1; min-width:0; padding-right:10px;">
+                    <div style="font-weight:bold; font-size:1em; color:${textColor}; white-space:normal; word-break:break-word; line-height:1.4;">
+                        ${textToShow}
+                    </div>
+                </div>
+
+                <div style="width:90px; flex-shrink:0; text-align:right; font-family:monospace; color:#bdc3c7; font-size:1.05em; padding-right:15px; padding-top:2px;">
+                    ${timeDisplay}
+                </div>
+                
+                <div style="width:20px; flex-shrink:0; display:flex; justify-content:center; padding-top:4px;">
+                    <div style="width:12px; height:12px; border-radius:50%; background:${circleColor}; border:${circleBorder};"></div>
+                </div>
+            </div>
+            `;
+            
+            localStepCounter++;
         });
-    </script>
+    }
+
+    container.innerHTML = html;
+}
+
+
+function lockOtherTrucks(activeId, truckData = null){ // 🔴 Добавили truckData
+
+    if(!activeId) return;
+
+    activeId = String(activeId);   // 🔴 фикс
+
+    // --- НАЧАЛО МАГИИ ---
+    // Если трактор пропал из HTML после обновления страницы, мы его создаем сами!
+    let existingCard = document.getElementById("truck-" + activeId);
+    if (!existingCard && truckData && truckData.truck_serial_number) {
+        const truckBar = document.querySelector(".truck-bar");
+        
+        // Удаляем сообщение "No tractors available", если оно есть
+        const emptyMsg = truckBar.querySelector("div[style*='color:#95a5a6']");
+        if (emptyMsg) emptyMsg.remove();
+        
+        // Создаем новую карточку активного трактора
+        const newCard = document.createElement("div");
+        newCard.className = "truck-card";
+        newCard.id = "truck-" + activeId;
+        newCard.innerHTML = `
+            <div style="cursor:pointer">
+                🚜 ${truckData.truck_serial_number}<br>
+                <small>Active Truck</small>
+            </div>
+            <button id="accept-${activeId}" style="display:none;">ACCEPT</button>
+        `;
+        truckBar.prepend(newCard); // Вставляем её самой первой в список
+    }
+    // --- КОНЕЦ МАГИИ ---
+
+    document.querySelectorAll(".truck-card").forEach(card=>{
+
+        const id = card.id.replace("truck-","");
+
+        const acceptBtn = document.getElementById("accept-" + id);
+
+        card.classList.remove("truck-accepted","truck-locked");
+
+        const oldStatus = card.querySelector(".truck-status");
+        if(oldStatus) oldStatus.remove();
+
+        if(id === activeId){
+
+            card.classList.add("truck-accepted");
+            card.style.pointerEvents = "auto";
+
+            const label = document.createElement("div");
+            label.className="truck-status";
+            label.style.fontSize="12px";
+            label.innerText="ACCEPTED";
+
+            card.appendChild(label);
+
+        }else{
+
+            card.classList.add("truck-locked");
+            card.style.pointerEvents="none";
+
+            const label = document.createElement("div");
+            label.className="truck-status";
+            label.style.fontSize="12px";
+            label.innerText="LOCKED";
+
+            card.appendChild(label);
+        }
+
+        if(acceptBtn) acceptBtn.style.display="none";
+
+    });
+}
+
+function startTimer(startTime,duration){
+
+if(timerInterval){
+clearInterval(timerInterval);
+}
+
+const start=new Date(startTime);
+
+timerInterval=setInterval(()=>{
+
+const now=new Date();
+
+const elapsed=Math.floor((now-start)/1000);
+
+const remaining=Math.max(duration-elapsed,0);
+
+const min=String(Math.floor(remaining/60)).padStart(2,'0');
+const sec=String(remaining%60).padStart(2,'0');
+
+document.getElementById("timer").innerText=`${min}:${sec}`;
+
+const percent=Math.min((elapsed/duration)*100,100);
+
+const progressBar = document.getElementById("progress");
+progressBar.style.width=percent+"%";
+
+// --- ЛОГИКА ЦВЕТОВ ---
+if (percent < 50) {
+    progressBar.style.backgroundColor = "#27ae60"; // Зеленый
+} else if (percent < 80) {
+    progressBar.style.backgroundColor = "#f1c40f"; // Желтый
+} else {
+    progressBar.style.backgroundColor = "#e74c3c"; // Красный
+}
+
+},1000);
+
+}
+
+function selectUser(id){
+currentUser=id;
+}
+
+function completeCurrentTask(){
+    // 1. Проверка бейджика / выбора рабочего
+    if(!currentUser){
+        alert("❌ Сначала выберите рабочего (Scan worker QR)!");
+        return;
+    }
+
+    // --- 2. НОВАЯ ИИ-ПРОВЕРКА ЛИЦА ---
+    if (!isFaceAligned || !currentFaceDescriptor) {
+        // Если рамка желтая или красная — блокируем нажатие!
+        alert("🛑 Система безопасности: Пожалуйста, посмотрите в камеру! Дождитесь зеленой рамки.");
+        return;
+    }
+    // ---------------------------------
+
+    // 3. Отправляем запрос, прикрепляя слепок лица
+    fetch(`/api/station/${STATION_SLUG}/next-task/`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            operator_id: currentUser,
+            face_descriptor: currentFaceDescriptor // <--- ОТПРАВЛЯЕМ ЛИЦО НА СЕРВЕР
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Защита от ошибок (сюда бэкенд пришлет ошибку, если лицо не совпало!)
+        if(data.status === "error" || data.error){
+            alert("❌ Ошибка: " + (data.message || data.error));
+            return;
+        }
+        if(data.status === "no_truck"){
+            alert("❌ Трактор не найден! Нажмите ACCEPT на нужный трактор.");
+            return;
+        }
+
+        // --- ЛОГИКА СБРОСА ОПЕРАТОРА БЕЗ ВСПЛЫВАЮЩЕГО ОКНА ---
+        if(data.status === "step_ready"){
+            currentUser = null; // Обнуляем рабочего в памяти браузера
+            
+            // Убираем синюю подсветку со всех кнопок рабочих
+            document.querySelectorAll('.user-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Очищаем таймер старого шага
+            if(typeof timerInterval !== 'undefined' && timerInterval) {
+                clearInterval(timerInterval);
+            }
+            
+            // --- МИНИМАЛЬНЫЕ ПРАВКИ ДЛЯ СБРОСА ЭКРАНА ---
+            // Обнуляем цифры таймера и текст
+            let timerEl = document.getElementById("timer");
+            if (timerEl) timerEl.innerText = "00:00";
+            
+            let descEl = document.getElementById("active-desc");
+            if (descEl) descEl.innerText = "READY! Press SPACE to start STEP " + data.next_step_number;
+
+            // Сбрасываем полоску прогресса на серый цвет
+            let progressBar = document.querySelector('.progress-fill') || document.querySelector('.progress-bar') || document.getElementById("progress-bar");
+            if(progressBar) {
+                progressBar.style.width = "0%";
+                progressBar.style.backgroundColor = "#4b5563"; // серый цвет ожидания
+            }
+            // --------------------------------------------
+            
+            loadData(); 
+            return;
+        }
+
+        if(data.status === "complete"){
+            alert("✅ Сборка завершена! Трактор отправлен дальше.");
+            window.location.reload(); 
+            return;
+        }
+
+        loadData();
+    })
+    .catch(err => {
+        console.error(err);
+        alert("❌ Ошибка связи с сервером!");
+    });
+}
+
+document.addEventListener("keydown",function(e){
+
+if(e.code==="Space"){
+e.preventDefault();
+completeCurrentTask();
+}
+
+});
+
+setInterval(loadData,3000);
+loadData();
+
+</script>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<script>
+
+let qrScanner=null;
+
+function startQRScanner(){
+
+if(qrScanner){
+qrScanner.stop();
+}
+
+qrScanner=new Html5Qrcode("qr-reader");
+
+qrScanner.start(
+{facingMode:"environment"},
+{fps:10,qrbox:200},
+
+function(decodedText){
+
+selectUser(decodedText);
+
+setTimeout(function(){
+completeCurrentTask();
+},400);
+
+qrScanner.stop();
+
+}
+
+);
+
+}
+
+
+
+let isFaceAligned = false; // Флаг: ровно ли стоит лицо
+let currentFaceDescriptor = null; // Здесь будем хранить отпечаток того, кто сейчас в кадре
+
+async function initFaceScanner() {
+    const video = document.getElementById('stationVideo');
+    const canvas = document.getElementById('stationCanvas');
+    const guide = document.getElementById('target-guideline');
+    const statusTxt = document.getElementById('face-status-text');
+    const widget = document.getElementById('face-scanner-widget');
+
+    try {
+        statusTxt.innerText = "Загрузка нейросетей...";
+        const MODEL_URL = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model/';
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+        statusTxt.innerText = "Включение камеры...";
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+
+        video.addEventListener('play', () => {
+            const displaySize = { width: video.width, height: video.height };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            // Проверяем лицо 3 раза в секунду
+            setInterval(async () => {
+                const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+                
+                if (detection) {
+                    const box = faceapi.resizeResults(detection, displaySize).detection.box;
+                    
+                    // КООРДИНАТЫ НАШЕГО ИДЕАЛЬНОГО КВАДРАТА (из HTML выше)
+                    // КООРДИНАТЫ НАШЕГО ИДЕАЛЬНОГО КВАДРАТА
+                    const target = { x: 50, y: 30, w: 140, h: 160 };
+                    
+                    // Достаем ключевые точки лица (Landmarks)
+                    const landmarks = faceapi.resizeResults(detection, displaySize).landmarks;
+                    
+                    // Берем координаты конкретных точек: кончик носа и края глаз
+                    const nose = landmarks.getNose()[3]; 
+                    const leftEye = landmarks.getLeftEye()[0]; 
+                    const rightEye = landmarks.getRightEye()[3]; 
+
+                    // Координаты нашего пунктирного квадрата
+                    const targetLeft = 50;           // Левая стенка
+                    const targetRight = 190;         // Правая стенка (50 + 140)
+                    const targetTop = 30;            // Верхняя стенка
+                    const targetBottom = 190;        // Нижняя стенка (30 + 160)
+
+                    // Функция проверки: находится ли точка внутри квадрата?
+                    const isInside = (point) => {
+                        return point.x >= targetLeft && point.x <= targetRight && 
+                               point.y >= targetTop && point.y <= targetBottom;
+                    };
+
+                    // ПРАВИЛО 1: Глаза и нос должны быть строго внутри пунктира
+                    const isFaceFeaturesInside = isInside(nose) && isInside(leftEye) && isInside(rightEye);
+
+                    // ПРАВИЛО 2: Лицо не должно быть слишком мелким (расстояние между глазами > 30px)
+                    const eyeDistance = Math.abs(rightEye.x - leftEye.x);
+                    const isGoodSize = eyeDistance > 30;
+
+                    // Если глаза и нос внутри квадрата, и вы не слишком далеко:
+                    if (isFaceFeaturesInside && isGoodSize) {
+                        guide.style.borderColor = "#27ae60"; // Зеленый
+                        widget.style.borderColor = "#27ae60"; 
+                        statusTxt.innerText = "Лицо в прицеле! ✅";
+                        statusTxt.style.color = "#2ecc71";
+                        isFaceAligned = true;
+                        currentFaceDescriptor = Array.from(detection.descriptor); 
+                    } else {
+                        guide.style.borderColor = "#f1c40f"; // Желтый
+                        widget.style.borderColor = "#f1c40f";
+                        statusTxt.innerText = "Поместите глаза и нос в квадрат";
+                        statusTxt.style.color = "#f1c40f";
+                        isFaceAligned = false;
+                        currentFaceDescriptor = null;
+                    }
+                } else {
+                    guide.style.borderColor = "#e74c3c"; // Красный - лица нет
+                    widget.style.borderColor = "#e74c3c";
+                    statusTxt.innerText = "Смотрите в камеру";
+                    statusTxt.style.color = "white";
+                    isFaceAligned = false;
+                    currentFaceDescriptor = null;
+                }
+            }, 300);
+        });
+
+    } catch (err) {
+        console.error("Ошибка камеры:", err);
+        statusTxt.innerText = "Камера не найдена ❌";
+    }
+}
+
+// Запускаем при открытии страницы
+document.addEventListener("DOMContentLoaded", () => {
+    initFaceScanner();
+});
+
+
+
+</script>
+
 </body>
 </html>
+
+
+
