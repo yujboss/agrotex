@@ -5,6 +5,30 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def login_page(request):
+
+    if request.method == "POST":
+
+        badge = request.POST.get("badge")
+
+        worker = Worker.objects.filter(badge_id=badge).first()
+
+        if not worker:
+            return render(request, "login.html", {"error": "Worker not found"})
+
+        request.session["worker_badge"] = worker.badge_id
+
+        if worker.role == "WAREHOUSE":
+            return redirect("/warehouse/")
+
+        if worker.role == "BRIGADIR":
+            return redirect("/dashboard/")
+        if worker.role == "ORDER_MANAGER":
+            return redirect("/orders/")
+        if worker.role == "USTA":
+            return redirect(f"/station/{worker.assigned_station.slug}/")
+
+    return render(request, "login.html")
 
 def get_client_ip(request):
     """Get the client's IP address, considering proxies (X-Forwarded-For)."""
