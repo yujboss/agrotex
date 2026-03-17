@@ -177,3 +177,157 @@ class TaskLog(models.Model):
 
     class Meta:
         ordering = ['start_time']
+class Order(models.Model):
+
+    customer = models.CharField(max_length=200)
+
+    delivery_date = models.DateField()
+
+    product = models.ForeignKey(ProductVariant, on_delete=models.CASCADE)
+
+    quantity = models.IntegerField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    is_planned = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.customer} - {self.product.name} ({self.quantity})"        
+    
+
+class PurchaseOrder(models.Model):
+
+    part = models.ForeignKey("Part", on_delete=models.CASCADE)
+
+    quantity = models.IntegerField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    status = models.CharField(
+        max_length=20,
+        default="PENDING"
+    )
+
+    def __str__(self):
+        return f"{self.part.code} ({self.quantity})"
+
+
+class Part(models.Model):
+
+    code = models.CharField(max_length=50, unique=True)
+
+    name = models.CharField(max_length=200)
+    reorder_level = models.IntegerField(default=10)
+
+    reorder_quantity = models.IntegerField(default=20)
+    unit = models.CharField(max_length=20, default="pcs")
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+
+class Inventory(models.Model):
+
+    part = models.ForeignKey(Part, on_delete=models.CASCADE)
+
+    quantity = models.PositiveIntegerField(default=0)
+
+    location = models.CharField(max_length=100, default="Main Warehouse")
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    low_level = models.IntegerField(default=5)
+
+    critical_level = models.IntegerField(default=2)
+
+    def stock_status(self):
+
+        if self.quantity <= self.critical_level:
+            return "RED"
+
+        if self.quantity <= self.low_level:
+            return "YELLOW"
+
+        return "GREEN"
+
+    def __str__(self):
+        return f"{self.part.code} ({self.quantity})"
+
+
+class PartConsumption(models.Model):
+
+    part = models.ForeignKey(Part, on_delete=models.CASCADE)
+
+    truck_run = models.ForeignKey(TruckRun, on_delete=models.CASCADE)
+
+    assembly_step = models.ForeignKey(AssemblyStep, on_delete=models.CASCADE)
+
+    quantity = models.IntegerField()
+
+    consumed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.part.code} used in {self.truck_run.id}"  
+
+
+
+class StepPart(models.Model):
+
+    assembly_step = models.ForeignKey(
+        AssemblyStep,
+        on_delete=models.CASCADE,
+        related_name="required_parts"
+    )
+
+    part = models.ForeignKey(
+        Part,
+        on_delete=models.CASCADE
+    )
+
+    quantity = models.IntegerField(default=1)
+
+    def __str__(self):
+        return f"{self.assembly_step} → {self.part.code} x{self.quantity}"
+          
+
+
+class PurchaseOrder(models.Model):
+
+    part = models.ForeignKey(Part, on_delete=models.CASCADE)
+
+    quantity = models.IntegerField()
+
+    status = models.CharField(
+        max_length=20,
+        default="PENDING"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"PO - {self.part.code} ({self.quantity})"
+
+
+
+class ProductionOrder(models.Model):
+
+    model_name = models.CharField(max_length=200, default="Unknown")
+
+    quantity = models.IntegerField()
+
+    vin_prefix = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
+
+    tractor_image = models.ImageField(
+        upload_to="tractors/",
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.model_name} x{self.quantity}"
