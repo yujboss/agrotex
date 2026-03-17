@@ -117,12 +117,29 @@ class AssemblyStep(models.Model):
 # --- DYNAMIC DATA (The Reality) ---
 
 class TruckRun(models.Model):
-    workstation = models.ForeignKey(WorkStation, on_delete=models.CASCADE)
+
     product = models.ForeignKey(ProductVariant, on_delete=models.CASCADE)
-    # Same VIN can appear at multiple posts as the truck moves down the line
-    truck_serial_number = models.CharField(max_length=100, null=True, blank=True)
+
+    workstation = models.ForeignKey(
+        WorkStation,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
+    truck_serial_number = models.CharField(max_length=100, unique=True)
+
+    current_station = models.IntegerField(default=1)
+
     start_time = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+
+    is_active = models.BooleanField(default=False)
+
+    is_finished = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.truck_serial_number
+
 
 class TaskLog(models.Model):
     STATUS_COLORS = [
