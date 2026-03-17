@@ -4,13 +4,17 @@ from django.utils import timezone
 # --- CONFIGURATION (Users & Stations) ---
 
 class WorkStation(models.Model):
-    name = models.CharField(max_length=50) # e.g. "Post 1"
+    name = models.CharField(max_length=50)  # e.g. "Post 1"
     slug = models.SlugField(unique=True)
     ip_address = models.GenericIPAddressField(unique=True)
     is_active = models.BooleanField(default=True)
-    
-    # Brigadier PIN for this specific station (Simple security)
-    reset_pin = models.CharField(max_length=4, default="1234", help_text="PIN to reset the truck")
+
+    # Brigadier PIN for this specific station
+    reset_pin = models.CharField(
+        max_length=4,
+        default="1234",
+        help_text="PIN to reset the truck"
+    )
 
     def __str__(self):
         return self.name
