@@ -916,6 +916,106 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
+// ==========================================
+// ЛОГИКА ГЛАВНОГО ПРОГРЕСС-БАРА В ШАПКЕ
+// ==========================================
+function updateOverallProgress(tasks) {
+    const fill = document.getElementById('overall-progress-fill');
+    if (!fill) return;
+
+    if (!tasks || tasks.length === 0) {
+        fill.style.width = '0%';
+        fill.innerText = '0%';
+        fill.style.background = 'rgba(255,255,255,0.1)';
+        return;
+    }
+
+    // Считаем общее количество задач и количество завершенных ('DONE')
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.status === 'DONE').length;
+    const percent = Math.round((completed / total) * 100);
+
+    // Обновляем визуально ширину и текст
+    fill.style.width = percent + '%';
+    fill.innerText = percent + '%';
+
+    // Меняем цвет, если трактор полностью собран на этой станции
+    if (percent === 100) {
+        fill.style.background = '#2ecc71'; // Ярко-зеленый (готово)
+    } else {
+        fill.style.background = '#27ae60'; // Обычный зеленый (в процессе)
+    }
+}
+
+// ==========================================
+// ЛОГИКА ОКНА РЕГИСТРАЦИИ ДЕФЕКТОВ
+// ==========================================
+function openDefectModal() {
+    if (!selectedTruck) { alert("⚠️ Сначала выберите трактор (Нажмите ACCEPT)!"); return; }
+    if (!currentUser) { alert("⚠️ Сначала отсканируйте бейджик (Выберите рабочего)!"); return; }
+    
+    // --- ЗАПОЛНЯЕМ ВЫПАДАЮЩИЙ СПИСОК ШАГОВ ---
+    const stepSelect = document.getElementById('defect-step');
+    stepSelect.innerHTML = ''; // Очищаем от старых данных
+    
+    if (allStationTasks.length === 0) {
+        stepSelect.innerHTML = '<option value="">Нет доступных шагов</option>';
+    } else {
+        // Перебираем все шаги станции и создаем из них пункты списка
+        allStationTasks.forEach(task => {
+            const option = document.createElement('option');
+            option.value = task.id; // В базу полетит ID этого шага
+            option.innerText = task.heading || `Шаг ${task.step_number}`; // Красивое название
+            stepSelect.appendChild(option);
+        });
+    }
+    // ------------------------------------------
+
+    document.getElementById('defect-modal').style.display = 'flex';
+}
+
+function closeDefectModal() {
+    document.getElementById('defect-modal').style.display = 'none';
+    document.getElementById('defect-desc').value = '';
+    document.getElementById('defect-critical').checked = false;
+    document.getElementById('defect-category').selectedIndex = 0;
+}
+
+function submitDefect() {
+    const stepId = document.getElementById('defect-step').value; // Берем выбранный шаг
+    const category = document.getElementById('defect-category').value;
+    const desc = document.getElementById('defect-desc').value.trim();
+    const isCritical = document.getElementById('defect-critical').checked;
+
+    if (!stepId) { alert("❌ Нет доступных шагов для привязки дефекта!"); return; }
+    if (!desc) { alert("❌ Пожалуйста, напишите описание проблемы!"); return; }
+
+    // Отправляем данные в Django
+    fetch(`/api/station/${STATION_SLUG}/report-defect/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            truck_id: selectedTruck,
+            worker_id: currentUser,
+            step_id: stepId, // <--- ОТПРАВЛЯЕМ ID ВЫБРАННОГО ШАГА
+            category: category,
+            description: desc,
+            is_critical: isCritical
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "error") { alert("❌ Ошибка сервера: " + data.error); return; }
+        if (data.status === "critical") {
+            alert("🛑 КРИТИЧЕСКИЙ БРАК!\nТрактор переведен в статус REWORK.");
+            window.location.reload(); 
+        } else {
+            alert("✅ Дефект записан! Можно работать дальше.");
+            closeDefectModal(); 
+        }
+    })
+    .catch(err => { alert("❌ Ошибка связи с сервером!"); });
+}
 
 </script>
 
