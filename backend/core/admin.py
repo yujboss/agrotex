@@ -98,6 +98,34 @@ class AssemblyStepAdmin(admin.ModelAdmin):
     
     inlines = [StepPartInline]
 
+@admin.register(Part)
+class PartAdmin(admin.ModelAdmin):
+    # Добавляем колонку 'barcode_preview' в список
+    list_display = ('code', 'name', 'unit', 'barcode_preview')
+    search_fields = ('code', 'name')
+
+    # Функция, которая рисует картинку штрих-кода (формат Code128 поддерживает буквы и цифры)
+    def barcode_preview(self, obj):
+        if obj.code:
+            # Генерируем картинку налету
+            url = f"https://barcode.tec-it.com/barcode.ashx?data={obj.code}&code=Code128&dpi=96"
+            return format_html('<img src="{}" height="40" style="border: 1px solid #ccc; padding: 2px; background: white;">', url)
+        return "-"
+    
+    barcode_preview.short_description = "Штрих-код"
+
+
+
+
+@admin.register(DefectLog)
+class DefectLogAdmin(admin.ModelAdmin):
+    # Какие колонки показывать в таблице
+    list_display = ('truck_run', 'category', 'worker', 'is_critical', 'is_resolved', 'reported_at')
+    # Фильтры сбоку (очень удобно искать критические)
+    list_filter = ('is_critical', 'is_resolved', 'category')
+    # Поиск по VIN-номеру трактора
+    search_fields = ('truck_run__truck_serial_number', 'description')
+
 
 # -------------------------------
 # Product Variant
