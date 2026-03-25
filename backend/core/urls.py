@@ -25,6 +25,7 @@ urlpatterns = [
     # API Endpoints
     path('api/dashboard/', api.dashboard_api, name='api_dashboard'),
     path('api/station/<slug:station_slug>/data/', api.station_data_api, name='api_station_data'),
+    path('api/station/<slug:slug>/report-defect/', api.report_defect_api, name='report_defect_api'),
     path('api/station/<slug:station_slug>/next-task/', api.next_task_api, name='api_next_task'),
     path('api/station/<slug:station_slug>/take-over/', api.take_over_task_api, name='api_take_over'),
     path('api/station/<slug:station_slug>/reset/', api.reset_truck_api, name='api_reset'),

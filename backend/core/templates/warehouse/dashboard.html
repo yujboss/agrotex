@@ -2,6 +2,8 @@
 <html>
 <head>
 <title>Warehouse Dashboard</title>
+<script src="https://unpkg.com/html5-qrcode"></script>
+
 <style>
 body{
     font-family:Segoe UI;
@@ -45,6 +47,9 @@ body{
 /* SEARCH */
 .search{
     margin-bottom:20px;
+    display: flex; /* Сделали flex для кнопки */
+    gap: 15px;
+    align-items: center;
 }
 .search input{
     padding:10px;
@@ -53,6 +58,7 @@ body{
     border:none;
     background:#1e293b;
     color:white;
+    outline: none;
 }
 
 /* TABLE */
@@ -130,6 +136,9 @@ input[type=number]::-webkit-outer-spin-button {
 
 <div class="search">
     <input type="text" id="search" placeholder="Search part...">
+    <button onclick="startWarehouseScanner()" style="background: #22c55e; padding: 10px 20px; font-size: 15px;">
+        📷 Скан штрих-кода
+    </button>
 </div>
 
 <table id="table">
@@ -170,6 +179,14 @@ input[type=number]::-webkit-outer-spin-button {
     {% endfor %}
 </table>
 
+<div id="scanner-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; justify-content: center; align-items: center; flex-direction: column;">
+    <div style="width: 100%; max-width: 400px; background: #1e293b; padding: 20px; border-radius: 12px; border: 2px solid #3b82f6; text-align: center;">
+        <h3 style="margin-top: 0; color: white;">📷 Наведите на штрих-код</h3>
+        <div id="warehouse-qr-reader" style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: black;"></div>
+        <button onclick="stopWarehouseScanner()" style="width: 100%; padding: 12px; background: #ef4444; font-size: 16px;">Отмена</button>
+    </div>
+</div>
+
 <script>
 /* SEARCH */
 document.getElementById("search").addEventListener("keyup", function(){
@@ -204,10 +221,10 @@ function showInput(id) {
 function hideInput(id) {
     document.getElementById("action-" + id).style.display = "block";
     document.getElementById("input-" + id).style.display = "none";
-    document.getElementById("qty-" + id).value = ""; // Очищаем поле при отмене
+    document.getElementById("qty-" + id).value = ""; 
 }
 
-/* SUBMIT REORDER */
+/* SUBMIT REORDER (РУЧНОЙ ВВОД В ТАБЛИЦЕ) */
 function submitReorder(part, id) {
     let qtyInput = document.getElementById("qty-" + id).value;
     let qty = parseInt(qtyInput);
@@ -216,22 +233,27 @@ function submitReorder(part, id) {
         alert("Пожалуйста, введите количество больше 0!");
         return;
     }
+    
+    sendReorderRequest(part, qty);
+}
 
+/* ФУНКЦИЯ ОТПРАВКИ НА СЕРВЕР (Общая для ручного ввода и сканера) */
+function sendReorderRequest(partCode, quantity) {
     fetch("/api/reorder/", {
         method:"POST",
         headers:{
             "Content-Type":"application/json"
         },
         body: JSON.stringify({
-            part: part,
-            quantity: qty
+            part: partCode,
+            quantity: quantity
         })
     })
     .then(response=>response.json())
     .then(data=>{
         if(data.status==="created"){
-            alert("✅ Успешно заказано: " + qty + " шт. Склад пополнен!");
-            window.location.reload(); // Перезагружаем страницу для обновления остатков
+            alert("✅ Успешно заказано: " + quantity + " шт.\nДеталь: " + partCode);
+            window.location.reload(); 
         } else {
             alert("❌ Ошибка: " + (data.message || data.status));
         }
@@ -241,6 +263,7 @@ function submitReorder(part, id) {
         alert("Server error");
     });
 }
+
 /* =========================================
    ЛОГИКА РАБОТЫ СКАНЕРА ШТРИХ-КОДОВ
    ========================================= */

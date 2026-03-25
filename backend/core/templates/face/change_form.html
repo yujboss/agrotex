@@ -11,35 +11,70 @@
     <fieldset class="module aligned">
         <h2>📸 Оцифровка лица (Face-API)</h2>
         <div style="padding: 20px; display: flex; gap: 20px;">
-            
             <div style="position: relative; width: 320px; height: 240px; background: #2c3e50; border-radius: 8px; overflow: hidden; border: 2px solid #34495e;">
                 <video id="webcamVideo" width="320" height="240" autoplay muted style="position: absolute;"></video>
                 <canvas id="overlayCanvas" width="320" height="240" style="position: absolute; top: 0; left: 0;"></canvas>
             </div>
-            
             <div>
                 <button type="button" id="startCameraBtn" class="button" style="padding: 10px 20px; font-size: 14px; margin-bottom: 10px; background: #3498db; color: white;">🎥 Включить камеру</button><br>
                 <button type="button" id="captureFaceBtn" class="button default" style="display:none; padding: 10px 20px; font-size: 14px; background: #27ae60; color: white;">✅ Сохранить отпечаток лица</button>
                 <p id="faceStatus" style="font-weight: bold; margin-top: 15px; color: #7f8c8d;">Нажмите "Включить камеру" для начала...</p>
             </div>
-            
+        </div>
+    </fieldset>
+
+    {% if original %}
+    <fieldset class="module aligned" style="border: 2px solid #8e44ad; margin-top: 30px; padding-bottom: 20px;">
+        <h2 style="background-color: #8e44ad; color: white; padding: 10px; margin: 0;">🔄 Управление сменой (Замена)</h2>
+        <div style="padding: 15px;">
+
+            {% if original.substituted_by %}
+                <div style="background-color: #f39c12; color: #fff; padding: 15px; border-radius: 6px; font-size: 15px; border: 2px solid #e67e22;">
+                    <h3 style="margin-top:0; color:#fff; font-size:18px;">⚠️ Рабочий отстранен (на больничном / отошел)</h3>
+                    В данный момент на станции его заменяет: <b style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">{{ original.substituted_by.name }} (Бейдж: {{ original.substituted_by.badge_id }})</b>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <button type="button" class="button" style="background-color: #e74c3c; padding: 10px 15px; font-weight: bold; border-radius: 4px; color: white; border: none; cursor: pointer;" onclick="revertSubstitution()">
+                        ❌ Завершить замену (Вернуть рабочего)
+                    </button>
+                </div>
+
+            {% else %}
+                <p style="color: #ecf0f1; font-size: 14px; margin-bottom: 15px;">
+                    Если <b>{{ original.name }}</b> заболел, выберите рабочего на замену.<br>
+                    <i style="color: #bdc3c7;">Внимание: Больной рабочий скроется с экрана станции, а временный займет его место.</i>
+                </p>
+
+                <div style="margin: 0; display:flex; gap:15px; align-items:center;">
+                    <select id="new_worker_id_select" style="padding: 10px; font-size: 14px; min-width: 300px; background-color: #34495e; color: #ffffff; border-radius: 4px; border: 1px solid #7f8c8d; cursor: pointer;">
+                        <option value="">-- Выберите временного рабочего --</option>
+                        {% for w in other_workers %}
+                            <option value="{{ w.id }}">{{ w.name }} (Бейдж: {{ w.badge_id }})</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="button" style="background-color: #8e44ad; padding: 10px 15px; font-weight: bold; border-radius: 4px; color: white; border: none; cursor: pointer;" onclick="makeSubstitution()">
+                        Заменить на станции
+                    </button>
+                </div>
+            {% endif %}
+
         </div>
     </fieldset>
 
     <script>
+        // Скрипт камеры
         document.addEventListener("DOMContentLoaded", () => {
             const video = document.getElementById('webcamVideo');
             const canvas = document.getElementById('overlayCanvas');
             const startBtn = document.getElementById('startCameraBtn');
             const captureBtn = document.getElementById('captureFaceBtn');
             const status = document.getElementById('faceStatus');
-            
-            // Находим поле, куда Джанго будет сохранять данные (JSON)
             const descriptorInput = document.getElementById('id_face_descriptor'); 
 
             if(descriptorInput) {
                 descriptorInput.style.backgroundColor = "#ecf0f1";
-                descriptorInput.readOnly = true; // Блокируем ручной ввод, чтобы не сломать JSON
+                descriptorInput.readOnly = true;
             }
 
             let localStream = null;
@@ -49,7 +84,6 @@
                 status.style.color = "#f39c12";
                 
                 try {
-                    // Грузим веса нейросети прямо с официального репозитория
                     const MODEL_URL = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model/';
                     await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
                     await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -65,7 +99,6 @@
                     status.innerText = "👁️ Камера работает. Посмотрите в объектив.";
                     status.style.color = "#3498db";
 
-                    // Как только видео пошло, начинаем искать лицо
                     video.addEventListener('play', () => {
                         const displaySize = { width: video.width, height: video.height };
                         faceapi.matchDimensions(canvas, displaySize);
@@ -76,10 +109,8 @@
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
                             
                             if (detection) {
-                                // Рисуем квадратик вокруг лица (прямо как ты хотел!)
                                 const resizedDetection = faceapi.resizeResults(detection, displaySize);
                                 faceapi.draw.drawDetections(canvas, resizedDetection);
-                                
                                 status.innerText = "🎯 Лицо поймано! Нажмите зеленую кнопку.";
                                 status.style.color = "#27ae60";
                             } else {
@@ -89,34 +120,67 @@
                         }, 200);
                     });
                 } catch (err) {
-                    status.innerText = "❌ Ошибка камеры или сети: " + err;
+                    status.innerText = "❌ Ошибка камеры: " + err;
                     status.style.color = "#c0392b";
                 }
             });
 
-            // Когда нажимаем "Сохранить отпечаток"
             captureBtn.addEventListener('click', async () => {
-                status.innerText = "⏳ Вычисление 128-мерного вектора...";
+                status.innerText = "⏳ Вычисление вектора...";
                 const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
                 
                 if (detection) {
-                    // Превращаем массив данных в JSON и прячем в поле Джанго
                     const descriptorArray = Array.from(detection.descriptor);
                     descriptorInput.value = JSON.stringify(descriptorArray);
-                    
-                    status.innerText = "💾 Отпечаток готов! Теперь нажмите 'SAVE' в самом низу страницы.";
+                    status.innerText = "💾 Отпечаток готов! Нажмите 'SAVE' внизу страницы.";
                     status.style.color = "#27ae60";
                     captureBtn.style.display = 'none';
-                    
-                    // Выключаем камеру
-                    if (localStream) {
-                        localStream.getTracks().forEach(track => track.stop());
-                    }
+                    if (localStream) localStream.getTracks().forEach(track => track.stop());
                 } else {
-                    status.innerText = "❌ Не удалось сделать снимок. Попробуйте еще раз.";
+                    status.innerText = "❌ Не удалось сделать снимок.";
                     status.style.color = "#c0392b";
                 }
             });
         });
+
+        // Скрипт защиты от вложенных форм (Для замены рабочих)
+        function makeSubstitution() {
+            const select = document.getElementById('new_worker_id_select');
+            if (!select.value) {
+                alert('Пожалуйста, выберите рабочего на замену!');
+                return;
+            }
+            submitCustomAction("{% url 'admin:substitute-worker' original.id %}", { 'new_worker_id': select.value });
+        }
+
+        function revertSubstitution() {
+            if (confirm('Точно завершить замену и вернуть этого рабочего на станцию?')) {
+                submitCustomAction("{% url 'admin:revert-substitute' original.id %}", {});
+            }
+        }
+
+        function submitCustomAction(actionUrl, data) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = actionUrl;
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+
+            for (const key in data) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = data[key];
+                form.appendChild(input);
+            }
+            document.body.appendChild(form);
+            form.submit();
+        }
     </script>
+    {% endif %}
 {% endblock %}

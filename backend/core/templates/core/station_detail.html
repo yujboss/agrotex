@@ -95,10 +95,11 @@ border-top:2px solid #2c3e50;
 
 .truck-image{
 width:100%;
-max-width:200px;
+max-width:150px; /* Было 200px, сделали 150px */
 border-radius:8px;
-margin-bottom:10px;
+margin: 0 auto 10px auto; /* Центрируем по середине */
 border:2px solid #2c3e50;
+display: block;
 }
 
 .truck-vin{
@@ -167,15 +168,21 @@ transition:width 0.3s;
 
 <body>
 
-<div class="header">
-<div>{{ station.name }}</div>
+<div class="header" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: #2c3e50; color: white;">
+    <div style="font-weight: bold; font-size: 1.2em; min-width: 150px;">{{ station.name }}</div>
 
-<div style="display:flex;gap:10px">
-<a href="{% url 'production_dashboard' %}"
-style="background:#3498db;color:white;border:none;padding:10px 20px;border-radius:4px;text-decoration:none">
-Dashboard
-</a>
-</div>
+    <div style="flex-grow: 1; margin: 0 40px; background: rgba(255,255,255,0.1); height: 24px; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #34495e;">
+        <div id="overall-progress-fill" style="width: 0%; height: 100%; background: #27ae60; transition: width 0.5s ease; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+            0%
+        </div>
+    </div>
+
+    <div style="display:flex; gap:10px; min-width: 150px; justify-content: flex-end;">
+        <a href="{% url 'production_dashboard' %}" 
+           style="background:#3498db; color:white; border:none; padding:10px 20px; border-radius:4px; text-decoration:none; font-weight: bold;">
+            Dashboard
+        </a>
+    </div>
 </div>
 
 <div class="truck-bar">
@@ -242,43 +249,53 @@ No Image
 <div class="truck-vin">-</div>
 
 </div>
-
+<button onclick="openDefectModal()" style="width: 100%; padding: 12px; background: #e74c3c; border: none; color: white; border-radius: 6px; margin-top: 15px; font-weight: bold; font-size: 1.05em; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: background 0.2s;" onmouseover="this.style.background='#c0392b'" onmouseout="this.style.background='#e74c3c'">
+    ⚠️ Сообщить о браке
+</button>
 </div>
 
 <div class="col-active" style="position: relative;">
-
-    <div id="face-scanner-widget" style="
-        position: relative; 
-        margin-bottom: 40px;
-        width: 240px; 
-        height: 240px; 
-        background: #000; 
-        border: 4px solid #e74c3c;
-        border-radius: 12px; 
-        overflow: hidden; 
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    ">
-        <video id="stationVideo" width="240" height="240" autoplay muted style="position: absolute; top:0; left:0; object-fit: cover; transform: scaleX(-1);"></video>
-        <canvas id="stationCanvas" width="240" height="240" style="position: absolute; top:0; left:0; transform: scaleX(-1);"></canvas>
+    
+    <div style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 30px; flex-wrap: nowrap;">
         
-        <div id="target-guideline" style="
-            position: absolute; 
-            top: 30px; 
-            left: 50px; 
-            width: 140px; 
-            height: 160px; 
-            border: 3px dashed #e74c3c; 
-            border-radius: 10px; 
-            box-sizing: border-box; 
-            pointer-events: none; 
-            transition: border-color 0.3s;
-        "></div>
-        
-        <div id="face-status-text" style="position: absolute; bottom: 8px; width: 100%; text-align: center; color: white; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px black; z-index: 10;">
-            Инициализация камеры...
+        <div style="flex-shrink: 0;">
+            <div id="face-scanner-widget" style="
+                position: relative; 
+                width: 240px; 
+                height: 240px; 
+                background: #000; 
+                border: 4px solid #e74c3c;
+                border-radius: 12px; 
+                overflow: hidden; 
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            ">
+                <video id="stationVideo" width="240" height="240" autoplay muted style="position: absolute; top:0; left:0; object-fit: cover; transform: scaleX(-1);"></video>
+                <canvas id="stationCanvas" width="240" height="240" style="position: absolute; top:0; left:0; transform: scaleX(-1);"></canvas>
+                
+                <div id="target-guideline" style="
+                    position: absolute; 
+                    top: 30px; 
+                    left: 50px; 
+                    width: 140px; 
+                    height: 160px; 
+                    border: 3px dashed #e74c3c; 
+                    border-radius: 10px; 
+                    box-sizing: border-box; 
+                    pointer-events: none; 
+                    transition: border-color 0.3s;
+                "></div>
+                
+                <div id="face-status-text" style="position: absolute; bottom: 8px; width: 100%; text-align: center; color: white; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px black; z-index: 10;">
+                    Инициализация камеры...
+                </div>
+            </div>
         </div>
-    </div>
 
+        <div style="flex-grow: 1; max-width: 550px; width: 100%;">
+            <div id="active-materials-box" style="width: 100%;"></div>
+        </div>
+
+    </div>
     <div class="big-step" id="active-desc">
         WAITING...
     </div>
@@ -291,9 +308,8 @@ No Image
         <div class="progress-fill" id="progress"></div>
     </div>
 
-
     <button onclick="completeCurrentTask()"
-        style="margin-top:15px;padding:18px 40px;font-size:1.3em;background:#27ae60;color:white;border:none;border-radius:8px">
+        style="margin-top:15px;padding:18px 40px;font-size:1.3em;background:#27ae60;color:white;border:none;border-radius:8px;cursor:pointer;">
         Complete Task
     </button>
 
@@ -303,13 +319,41 @@ No Image
 
 </div>
 
+<div id="defect-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: #2c3e50; border: 2px solid #e74c3c; border-radius: 12px; padding: 30px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.7); color: white;">
+        <h2 style="margin-top: 0; color: #e74c3c; border-bottom: 1px solid #34495e; padding-bottom: 10px;">⚠️ Регистрация дефекта</h2>
+        <label style="display: block; margin-bottom: 5px; color: #bdc3c7; font-weight: bold;">На каком этапе обнаружен брак:</label>
+        <select id="defect-step" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #34495e; background: #1a252f; color: white; margin-bottom: 20px; font-size: 1.05em; outline: none;">
+            </select>
+        <label style="display: block; margin-bottom: 5px; color: #bdc3c7; font-weight: bold;">Категория дефекта:</label>
+        <select id="defect-category" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #34495e; background: #1a252f; color: white; margin-bottom: 20px; font-size: 1.05em; outline: none;">
+            <option value="MECH">⚙️ Механический (резьба, металл)</option>
+            <option value="ELEC">⚡ Электрика (проводка, контакты)</option>
+            <option value="PAINT">🎨 Покраска / Царапины</option>
+            <option value="PART_MISSING">📦 Некомплект (не хватает детали)</option>
+            <option value="PART_DEFECT">🛠️ Брак самой детали</option>
+            <option value="OTHER">❓ Другое</option>
+        </select>
+        <label style="display: block; margin-bottom: 5px; color: #bdc3c7; font-weight: bold;">Описание проблемы:</label>
+        <textarea id="defect-desc" rows="4" placeholder="Кратко опишите, что именно сломалось или не подошло..." style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #34495e; background: #1a252f; color: white; margin-bottom: 20px; font-size: 1.05em; box-sizing: border-box; resize: none; outline: none;"></textarea>
+        <label style="display: flex; align-items: center; cursor: pointer; background: rgba(231, 76, 60, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #e74c3c; transition: background 0.2s;" onmouseover="this.style.background='rgba(231, 76, 60, 0.2)'" onmouseout="this.style.background='rgba(231, 76, 60, 0.1)'">
+            <input type="checkbox" id="defect-critical" style="width: 25px; height: 25px; margin-right: 15px; cursor: pointer;">
+            <span style="color: #e74c3c; font-weight: bold; font-size: 1.1em;">🛑 КРИТИЧЕСКИЙ (Остановить конвейер)</span>
+        </label>
+        <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
+            <button onclick="closeDefectModal()" style="background: #7f8c8d; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: background 0.2s;" onmouseover="this.style.background='#95a5a6'" onmouseout="this.style.background='#7f8c8d'">Отмена</button>
+            <button onclick="submitDefect()" style="background: #e74c3c; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: background 0.2s;" onmouseover="this.style.background='#c0392b'" onmouseout="this.style.background='#e74c3c'">Отправить</button>
+        </div>
+    </div>
+</div>
+
 <script>
 
 const STATION_SLUG="{{ station.slug }}";
 let currentUser=null;
 let timerInterval=null;
 let selectedTruck = null;
-
+let allStationTasks = [];
 function startTruck(id){
 
 selectedTruck = id;
@@ -359,13 +403,18 @@ function loadData(){
         if(data.current_operator_badge){
             currentUser = data.current_operator_badge;
         }
-
+        allStationTasks = data.tasks || [];
         renderUsers(data.workers || []);
         renderTasks(data.tasks || [], data.current_step_id);
+
+        // Обновляем главный прогресс-бар в шапке
+        updateOverallProgress(data.tasks || []);
 
        /* SHOW ACTIVE TRUCK */
 
         if(data.truck_serial_number){
+
+            selectedTruck = data.current_truck_id;
 
             // 1. Блокируем остальные и создаем синюю кнопку для активного трактора
             lockOtherTrucks(data.current_truck_id, data);
@@ -390,16 +439,52 @@ function loadData(){
             if(data.truck_image_url){
                 let imgContainer = document.getElementById("truck-image-container");
                 if(imgContainer){
-                    imgContainer.innerHTML = `<img src="${data.truck_image_url}" class="truck-image" style="max-width:100%; border-radius:8px;">`;
+                    imgContainer.innerHTML = `<img src="${data.truck_image_url}" class="truck-image">`;
                 }
             }
 
         }
 
+            if (data.truck_status === 'REWORK') {
+                // 1. Очищаем коробку с материалами
+                if (typeof updateMaterialsBox === "function") updateMaterialsBox(null);
+                
+                // 2. Прячем таймер, прогресс-бар и кнопку завершения
+                const timerObj = document.getElementById("timer");
+                const progBar = document.querySelector(".progress-bar");
+                const compBtn = document.querySelector('button[onclick="completeCurrentTask()"]');
+                if(timerObj) timerObj.style.display = "none";
+                if(progBar) progBar.style.display = "none";
+                if(compBtn) compBtn.style.display = "none";
+
+                // 3. Рисуем огромный красный баннер в центре экрана
+                document.getElementById("active-desc").innerHTML = `
+                    <div style="background: rgba(192, 57, 43, 0.9); padding: 50px 30px; border-radius: 15px; border: 3px solid #e74c3c; box-shadow: 0 0 40px rgba(231, 76, 60, 0.5); text-align: center; margin-top: 30px;">
+                        <h1 style="margin: 0; color: white; font-size: 2.5em; letter-spacing: 2px;">🛑 ДОРАБОТКА (БРАК)</h1>
+                        <p style="color: #ecf0f1; font-size: 1.2em; margin-top: 15px;">Сборка остановлена. Ожидайте Мастера для устранения дефекта.</p>
+                    </div>
+                `;
+                return; // ⛔ ВАЖНО: Выходим из функции, чтобы дальше не рисовались шаги сборки
+            } else {
+                // Если всё ОК (Мастер снял статус брака), возвращаем элементы на место
+                const timerObj = document.getElementById("timer");
+                const progBar = document.querySelector(".progress-bar");
+                const compBtn = document.querySelector('button[onclick="completeCurrentTask()"]');
+                if(timerObj) timerObj.style.display = "block";
+                if(progBar) progBar.style.display = "block";
+                if(compBtn) compBtn.style.display = "inline-block";
+            }
+            // ==========================================
+
         if(data.current_step_id){
             // 1. ЗАДАЧА В РАБОТЕ (Оранжевый заголовок, темное описание)
             const step = data.tasks.find(t => t.id === data.current_step_id);
             if(!step) return;
+
+            // <--- НОВОЕ: ПОКАЗЫВАЕМ МАТЕРИАЛЫ ДЛЯ ТЕКУЩЕГО ШАГА --->
+            if (typeof updateMaterialsBox === "function") {
+                updateMaterialsBox(step); 
+            }
 
             // Увеличил лимит до 90 символов, чтобы влезало больше смысла
             let descSnippet = step.description || "";
@@ -421,13 +506,15 @@ function loadData(){
             const nextStep = data.tasks.find(t => t.status === 'PENDING');
             
             if (nextStep) {
+                // <--- НОВОЕ: ПОКАЗЫВАЕМ МАТЕРИАЛЫ ДЛЯ БУДУЩЕГО ШАГА --->
+                if (typeof updateMaterialsBox === "function") {
+                    updateMaterialsBox(nextStep); 
+                }
+
                 let descSnippet = nextStep.description || "";
                 if (descSnippet.length > 90) descSnippet = descSnippet.substring(0, 90) + "...";
 
                 document.getElementById("active-desc").innerHTML = `
-                    <div style="font-size: 0.4em; color: #7f8c8d; font-weight: bold; margin-bottom: 5px;">
-                        PRESS SPACE TO START:
-                    </div>
                     <div style="font-size: 0.7em; color: #27ae60; line-height: 1.2; text-transform: uppercase;">
                         ${nextStep.heading || "ЗАДАЧА " + nextStep.step_number}
                     </div>
@@ -436,11 +523,15 @@ function loadData(){
                     </div>
                 `;
             } else {
+                // <--- НОВОЕ: ОЧИЩАЕМ БЛОК МАТЕРИАЛОВ --->
+                if (typeof updateMaterialsBox === "function") updateMaterialsBox(null);
                 document.getElementById("active-desc").innerHTML = "<div style='color:#27ae60;'>ALL TASKS COMPLETED!</div>";
             }
             
         } else {
             // 3. ТРАКТОРА НЕТ НА СТАНЦИИ
+            // <--- НОВОЕ: ОЧИЩАЕМ БЛОК МАТЕРИАЛОВ --->
+            if (typeof updateMaterialsBox === "function") updateMaterialsBox(null);
             document.getElementById("active-desc").innerHTML = "<div style='color:#7f8c8d;'>WAITING...</div>";
         }
 
@@ -449,22 +540,80 @@ function loadData(){
 }
 
 function renderUsers(workers){
+    const container=document.getElementById('user-list');
 
-const container=document.getElementById('user-list');
+    container.innerHTML=workers.map(w => {
+        // --- ЛОГИКА ЖЕЛТОЙ ПОДСВЕТКИ ДЛЯ ЗАМЕНЫ ---
+        let isSub = w.is_substitute;
+        let borderColor = isSub ? "#f1c40f" : "transparent"; 
+        let nameColor = isSub ? "#f1c40f" : "inherit";
+        let badgeHtml = isSub ? `<div style="color:#000; background:#f1c40f; font-size:0.7em; padding:2px 5px; border-radius:4px; margin-top:5px; font-weight:bold; display:inline-block;">НА ЗАМЕНЕ</div>` : "";
 
-container.innerHTML=workers.map(w=>`
-<button onclick="selectUser('${w.badge_id}')"
-class="user-btn ${currentUser===w.badge_id?'active':''}">
-${w.name}<br>
-<small>${w.badge_id}</small>
-</button>
-`).join('');
-
+        return `
+        <button onclick="selectUser('${w.badge_id}')"
+        class="user-btn ${currentUser===w.badge_id?'active':''}"
+        style="border: 2px solid ${borderColor};">
+            <span style="color: ${nameColor}; font-weight: ${isSub ? 'bold' : 'normal'};">${w.name}</span><br>
+            <small>${w.badge_id}</small><br>
+            ${badgeHtml}
+        </button>
+        `;
+    }).join('');
 }
+
+
+function updateMaterialsBox(step) {
+    const box = document.getElementById("active-materials-box");
+    if (!box) return;
+
+    if (!step || (!step.tooling && (!step.parts || step.parts.length === 0))) {
+        box.innerHTML = ""; 
+        return;
+    }
+
+    // Главный блок (полупрозрачный Glassmorphism)
+    let html = `<div style="height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; background: rgba(44, 62, 80, 0.7); backdrop-filter: blur(6px); border: 2px solid rgba(52, 73, 94, 0.8); border-radius: 8px; padding: 15px; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">`;
+    
+    // 1. Оснастка
+    if (step.tooling) {
+        // Сделал иконку желтой, а сам текст чисто белым для четкости
+        html += `<div style="color: #f1c40f; font-size: 1.1em; margin-bottom: 12px;">
+                    <b style="text-transform: uppercase;">🛠 Оснастка:</b> <span style="color: #ffffff;">${step.tooling}</span>
+                 </div>`;
+    }
+
+    // 2. Детали и пакеты
+    if (step.parts && step.parts.length > 0) {
+        let partsHtml = step.parts.map(p => {
+            let pkg = p.package ? `<span style="background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(243, 156, 18, 0.4); color: #f39c12; padding: 2px 8px; border-radius: 6px; margin-right: 8px; font-size: 0.85em; white-space: nowrap; display: inline-block;">📦 Пакет <b style="color:#f1c40f;">${p.package}</b></span>` : "";
+            
+            // ИЗМЕНЕНИЯ ЗДЕСЬ: 
+            // 1. Код детали теперь светло-голубой (#85c1e9)
+            // 2. Название детали чисто белое (#ffffff)
+            // 3. Количество - светло-серое (#bdc3c7) для визуального разделения
+            return `<div style="margin-bottom: 10px; color: #ffffff; font-size: 0.95em; line-height: 1.5;">
+                        ${pkg} <b style="color: #85c1e9; letter-spacing: 0.5px;">${p.code}</b> — ${p.name} <b style="white-space: nowrap; margin-left: 5px; color: #bdc3c7;">(${p.qty} шт.)</b>
+                    </div>`;
+        }).join('');
+        
+        // Сделал внутренний фон немного темнее (rgba 0,0,0, 0.2), чтобы светлый текст стал контрастнее
+        html += `<div style="background: rgba(0, 0, 0, 0.2); border-left: 4px solid #5dade2; padding: 12px; border-radius: 4px;">
+                    <div style="color: #85c1e9; font-weight: bold; margin-bottom: 10px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px;">Брать со склада:</div>
+                    ${partsHtml}
+                 </div>`;
+    }
+
+    html += `</div>`;
+    box.innerHTML = html;
+}
+
 
 function renderTasks(tasks, currentStepId){
     const container = document.getElementById("task-list");
     
+    // --- 1. ЗАПОМИНАЕМ ТЕКУЩУЮ ПОЗИЦИЮ СКРОЛЛА ---
+    const savedScroll = container.scrollTop;
+
     if (!tasks || tasks.length === 0) {
         container.innerHTML = "<div style='padding:20px; color:#bdc3c7;'>Нет задач...</div>";
         return;
@@ -530,8 +679,16 @@ function renderTasks(tasks, currentStepId){
             // Текст задачи и оператор на новой строке
             let textToShow = t.description || "Нет описания";
             if ((t.status === 'DONE' || t.status === 'IN_PROGRESS') && t.operator_name !== "-") {
-                // Добавили DIV с margin-top, чтобы рабочий всегда был с новой строки
-                textToShow += `<div style="color:#3498db; font-weight:bold; font-size:0.9em; margin-top:4px;">👷‍♂️ ${t.operator_name}</div>`;
+                
+                // --- ЛОГИКА ЦВЕТА ЗАМЕНЫ (ЯРКО-ЖЕЛТЫЙ) ---
+                let isReplaced = t.was_intervened; 
+                let workerColor = isReplaced ? "#f1c40f" : "#3498db"; // Желтый если замена, иначе Синий
+                // Сделали черный текст (#000) на желтом фоне (#f1c40f) для 100% читаемости
+                let badgeHtml = isReplaced ? `<span style="background:#f1c40f; color:#000000; font-size:0.75em; padding:3px 8px; border-radius:4px; margin-left:8px; vertical-align:middle; font-weight:900;">ЗАМЕНА</span>` : "";
+
+                textToShow += `<div style="color:${workerColor}; font-weight:bold; font-size:1em; margin-top:6px; display:flex; align-items:center;">
+                                  👷‍♂️ ${t.operator_name} ${badgeHtml}
+                               </div>`;
             }
 
             const textColor = t.status === 'PENDING' ? '#95a5a6' : '#ffffff';
@@ -562,6 +719,9 @@ function renderTasks(tasks, currentStepId){
     }
 
     container.innerHTML = html;
+
+    // --- 2. ВОЗВРАЩАЕМ СКРОЛЛ НА МЕСТО ---
+    container.scrollTop = savedScroll;
 }
 
 
@@ -764,13 +924,22 @@ function completeCurrentTask(){
     });
 }
 
-document.addEventListener("keydown",function(e){
+document.addEventListener("keydown", function(e) {
+    // Если пользователь сейчас печатает текст в поле ввода или описании — игнорируем горячую клавишу
+if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+return; 
+}
 
-if(e.code==="Space"){
+    // Если модальное окно брака открыто — тоже блокируем пробел, чтобы случайно не завершить задачу
+const defectModal = document.getElementById('defect-modal');
+if (defectModal && defectModal.style.display === 'flex') {
+return;
+}
+
+if (e.code === "Space") {
 e.preventDefault();
 completeCurrentTask();
 }
-
 });
 
 setInterval(loadData,3000);
@@ -914,6 +1083,7 @@ async function initFaceScanner() {
 document.addEventListener("DOMContentLoaded", () => {
     initFaceScanner();
 });
+
 
 
 // ==========================================

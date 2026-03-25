@@ -5,6 +5,13 @@ from .models import PurchaseOrder
 from django.forms import Textarea
 from django.db import models
 from .models import AssemblyStep, StepPart, Part
+from django.urls import path
+from django.shortcuts import redirect
+from django.contrib import messages
+from .models import DefectLog
+from django.contrib import admin
+from django.utils.html import format_html
+from .models import Part
 admin.site.register(PurchaseOrder)
 
 from .models import (
@@ -115,6 +122,7 @@ class WorkerAdmin(admin.ModelAdmin):
                 messages.error(request, "Этот рабочий сейчас никем не заменяется.")
                 
         return redirect('admin:core_worker_change', worker_id)
+
 # -------------------------------
 # Order
 # -------------------------------
@@ -128,11 +136,7 @@ class OrderAdmin(admin.ModelAdmin):
 # Parts / Warehouse
 # -------------------------------
 
-# Обязательно добавляем поиск по деталям
-@admin.register(Part)
-class PartAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'unit')
-    search_fields = ('code', 'name') # Включает поиск
+
 
 # Таблица добавления деталей внутрь Задания
 class StepPartInline(admin.TabularInline):
@@ -174,6 +178,8 @@ class AssemblyStepAdmin(admin.ModelAdmin):
     }
     
     inlines = [StepPartInline]
+
+
 
 @admin.register(Part)
 class PartAdmin(admin.ModelAdmin):

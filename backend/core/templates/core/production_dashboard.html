@@ -44,11 +44,40 @@
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        .station-card.status-GREEN { border-color: #2ecc71; }
-        .station-card.status-YELLOW { border-color: #f1c40f; }
-        .station-card.status-RED { border-color: #e74c3c; }
-        .station-card.status-BLUE { border-color: #3498db; }
-        .station-card.status-GRAY { border-color: #7f8c8d; background: #2c3e50; }
+
+        /* --- 1. ЦВЕТ И СВЕЧЕНИЕ ВСЕЙ КАРТОЧКИ --- */
+        .station-card.status-GREEN { 
+            border-color: #2ecc71 !important; 
+            background: rgba(46, 204, 113, 0.15) !important; /* Легкая зеленая заливка всей карточки */
+            box-shadow: 0 0 25px rgba(46, 204, 113, 0.5) !important; /* Зеленое свечение вокруг */
+        }
+        .station-card.status-YELLOW { 
+            border-color: #f1c40f !important; 
+            background: rgba(241, 196, 15, 0.15) !important; 
+            box-shadow: 0 0 25px rgba(241, 196, 15, 0.5) !important; 
+        }
+        .station-card.status-RED { 
+            border-color: #e74c3c !important; 
+            background: rgba(231, 76, 60, 0.2) !important; /* Чуть более плотная красная заливка */
+            box-shadow: 0 0 35px rgba(231, 76, 60, 0.7) !important; /* Мощная красная тревога */
+        }
+        .station-card.status-BLUE { 
+            border-color: #3498db !important; 
+            background: rgba(52, 152, 219, 0.15) !important; 
+            box-shadow: 0 0 25px rgba(52, 152, 219, 0.5) !important; 
+        }
+        .station-card.status-GRAY { 
+            border-color: #7f8c8d !important; 
+            background: #2c3e50 !important; 
+            box-shadow: none !important; 
+        }
+
+        /* --- 2. ВОЗВРАЩАЕМ ПРОСТОЙ ФОН ДЛЯ ТРАКТОРА (чтобы не мешал карточке) --- */
+        .truck-bg-GREEN, .truck-bg-YELLOW, .truck-bg-RED, .truck-bg-BLUE, .truck-bg-GRAY { 
+            background: rgba(0, 0, 0, 0.2) !important; /* Слегка затемняем окошко с трактором для контраста */
+            border-bottom: none !important;
+            box-shadow: none !important;
+        }
         
         .station-header {
             display: flex;
@@ -202,11 +231,7 @@
         </div>
 
     <script>
-        function formatTime(date) {
-            return date.toLocaleTimeString();
-        }
-        
-        function renderDashboard(data) {
+function renderDashboard(data) {
             const grid = document.getElementById('dashboard-grid');
             const stations = data.stations || [];
             
@@ -249,7 +274,7 @@
                             <span class="status-indicator ${statusColor}"></span>
                         </div>
                         
-                        <div class="truck-image-container">
+                        <div class="truck-image-container truck-bg-${statusColor}">
                             ${imageDisplay}
                         </div>
                         
