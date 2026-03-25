@@ -241,6 +241,59 @@ function submitReorder(part, id) {
         alert("Server error");
     });
 }
+/* =========================================
+   ЛОГИКА РАБОТЫ СКАНЕРА ШТРИХ-КОДОВ
+   ========================================= */
+let warehouseScanner = null;
+
+function startWarehouseScanner() {
+    document.getElementById('scanner-modal').style.display = 'flex';
+    warehouseScanner = new Html5Qrcode("warehouse-qr-reader");
+    
+    warehouseScanner.start(
+        { facingMode: "environment" }, 
+        { 
+            fps: 10, 
+            qrbox: { width: 250, height: 100 } // Прямоугольная зона, удобнее для штрих-кодов
+        }, 
+        function(decodedText) {
+            // КОД УСПЕШНО СЧИТАН!
+            stopWarehouseScanner();
+            handleScannedPart(decodedText);
+        },
+        function(errorMessage) {
+            // Игнорируем ошибки (сканер постоянно ищет код в кадре)
+        }
+    ).catch(err => {
+        alert("❌ Ошибка доступа к камере: " + err);
+        stopWarehouseScanner();
+    });
+}
+
+function stopWarehouseScanner() {
+    if (warehouseScanner) {
+        warehouseScanner.stop().then(() => {
+            warehouseScanner.clear();
+        }).catch(err => console.error(err));
+    }
+    document.getElementById('scanner-modal').style.display = 'none';
+}
+
+function handleScannedPart(partCode) {
+    // Всплывающее окно для ввода количества
+    let qty = prompt(`📦 Деталь распознана: ${partCode}\n\nВведите количество для пополнения:`, "10");
+    
+    if (qty !== null && qty.trim() !== "") {
+        let parsedQty = parseInt(qty);
+        if (isNaN(parsedQty) || parsedQty <= 0) {
+            alert("❌ Ошибка: Введите корректное число (больше нуля)!");
+            return;
+        }
+        
+        // Отправляем на сервер
+        sendReorderRequest(partCode, parsedQty);
+    }
+}
 </script>
 
 </body>
