@@ -1,0 +1,14 @@
+docker-compose down -v
+docker-compose up -d --build
+
+
+docker cp factory_db_backup.sql agrotex-db-1:/tmp/backup.sql
+
+
+docker-compose exec db psql -U factory_admin -d factory_db -f /tmp/backup.sql
+
+
+docker-compose exec web python manage.py migrate
+
+
+docker-compose exec web python manage.py collectstatic --noinput
