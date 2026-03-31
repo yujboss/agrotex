@@ -3,7 +3,11 @@ from django.utils import timezone
 import qrcode
 from io import BytesIO
 from django.core.files import File
-
+import barcode
+from barcode.writer import ImageWriter
+from io import BytesIO
+from django.core.files import File
+from django.db import models
 
 # --- CONFIGURATION (Users & Stations) ---
 
@@ -275,17 +279,39 @@ class Order(models.Model):
 
 
 class Part(models.Model):
-
     code = models.CharField(max_length=50, unique=True)
-
     name = models.CharField(max_length=200)
     reorder_level = models.IntegerField(default=10)
-
     reorder_quantity = models.IntegerField(default=20)
     unit = models.CharField(max_length=20, default="pcs")
+    
+    # НОВОЕ ПОЛЕ: Здесь будет храниться картинка
+    barcode_image = models.ImageField(upload_to='barcodes/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        # Генерируем штрих-код только если его еще нет
+        if not self.barcode_image and self.code:
+            try:
+                # Используем Code128 (он понимает цифры и английские буквы)
+                # ВАЖНО: в поле code не должно быть русских букв!
+                barcode_class = barcode.get_barcode_class('code128')
+                code_instance = barcode_class(self.code, writer=ImageWriter())
+                
+                # Сохраняем картинку во временную память
+                buffer = BytesIO()
+                code_instance.write(buffer)
+                
+                # Даем файлу имя (например: 916045.png) и сохраняем в поле
+                file_name = f"{self.code}.png"
+                self.barcode_image.save(file_name, File(buffer), save=False)
+            except Exception as e:
+                print(f"Ошибка генерации штрих-кода для {self.code}: {e}")
+                
+        # Стандартное сохранение в базу
+        super().save(*args, **kwargs)
 
 
 class Inventory(models.Model):
