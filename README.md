@@ -291,3 +291,31 @@ agrotex/
 7. Open http://localhost:8000 and http://localhost:8000/admin/
 
 After importing the backup you’ll have sample workstations, workers, products, and assembly steps. Use the station picker and truck selection to start a run and the station detail / dashboard to use the app.
+
+
+
+### How to Run for the First Time (Quick Setup)
+
+Run these commands sequentially in your terminal from the project root folder:
+
+```bash
+# 1. Stop old containers and remove volumes (if any)
+docker-compose down -v
+
+# 2. Build and start containers in the background
+docker-compose up -d --build
+
+# 3. Copy the database backup file directly into the DB container
+docker cp factory_db_backup.sql agrotex-db-1:/tmp/backup.sql
+
+# 4. Restore the database from the backup
+docker-compose exec db psql -U factory_admin -d factory_db -f /tmp/backup.sql
+
+# 5. Apply Django migrations
+docker-compose exec web python manage.py migrate
+
+# 6. Collect static files (CSS, JS, images)
+docker-compose exec web python manage.py collectstatic --noinput
+
+# 7. Create a superuser (you will need to set a username and password)
+docker-compose exec web python manage.py createsuperuser
