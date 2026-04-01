@@ -97,7 +97,7 @@ class Command(BaseCommand):
                     current_step = {
                         'heading': current_heading,
                         'description': desc_val,
-                        'time_min': time_min,
+                        'time_min': time_min, # Оставляем парсинг на всякий случай, но использовать не будем
                         'tooling': '', 
                         'torque': '',
                         'parts': []
@@ -151,6 +151,14 @@ class Command(BaseCommand):
                         'package': pkg_val
                     })
 
+            # =========================================================================
+            # НОВАЯ ЛОГИКА: Подсчитываем количество шагов внутри каждого заголовка
+            # =========================================================================
+            heading_step_counts = {}
+            for step_data in grouped_steps:
+                h = step_data['heading']
+                heading_step_counts[h] = heading_step_counts.get(h, 0) + 1
+
             global_step_counter = 0
             parts_linked = 0
 
@@ -158,8 +166,13 @@ class Command(BaseCommand):
             for step_data in grouped_steps:
                 global_step_counter += 1
                 
-                time_sec = int(step_data['time_min'] * 60)
-                if time_sec == 0: time_sec = 300
+                # Получаем сколько всего шагов в текущем заголовке
+                steps_in_heading = heading_step_counts[step_data['heading']]
+                
+                # Делим 60 минут на количество шагов в заголовке
+                # Например, если 3 шага: 60 / 3 = 20.0 минут. Умножаем на 60 сек = 1200 сек.
+                calculated_time_min = 60.0 / steps_in_heading
+                time_sec = int(calculated_time_min * 60)
                 
                 # Если собрали и момент, и инструмент, объединяем их красиво для вывода на экран
                 final_tooling = step_data['tooling']
@@ -173,7 +186,7 @@ class Command(BaseCommand):
                     step_number=global_step_counter,
                     heading=step_data['heading'],
                     description=step_data['description'],
-                    standard_duration_seconds=time_sec,
+                    standard_duration_seconds=time_sec, # <-- Используем наше новое посчитанное время
                     tooling=final_tooling, 
                     torque=step_data['torque']
                 )
