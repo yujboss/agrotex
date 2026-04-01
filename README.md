@@ -82,43 +82,45 @@ This will:
 
 First run may take a few minutes while the image is built.
 
-### 3. Import the included database backup (recommended)
+### 3. Import the database
 
-The repo includes **`factory_db_backup.sql`** — a PostgreSQL dump with sample data (workstations, workers, product variants, task categories, assembly steps). There is nothing private in it; it lets the project run with something to see right away.
+The repository includes **`factory_db_backup.sql`** — the complete database dump required to run the project.
 
-In **another terminal**, from the **project root** (where `factory_db_backup.sql` lives):
-
-**Linux / macOS / Git Bash:**
+Run these commands in your terminal from the project root folder to restore the database, apply migrations, and collect static files:
 
 ```bash
-docker-compose exec -T db psql -U factory_admin -d factory_db < factory_db_backup.sql
-```
+# 1. Copy the SQL backup file into the database container
+docker cp factory_db_backup.sql agrotex-db-1:/tmp/backup.sql
 
-**Windows (PowerShell):**
+# 2. Restore the database
+docker-compose exec db psql -U factory_admin -d factory_db -f /tmp/backup.sql
 
-```powershell
-Get-Content factory_db_backup.sql -Raw | docker-compose exec -T db psql -U factory_admin -d factory_db
-```
-
-**Windows (CMD):**
-
-```cmd
-type factory_db_backup.sql | docker-compose exec -T db psql -U factory_admin -d factory_db
-```
-
-You should see SQL commands and possibly `CREATE TABLE`, `ALTER TABLE`, etc. When it finishes without errors, the database is populated. If the dump was made with a different schema version, run migrations next so the schema matches the code:
-
-```bash
+# 3. Apply migrations
 docker-compose exec web python manage.py migrate
-```
 
-**If you prefer an empty database** (no sample data), skip the backup import and run only:
+# 4. Collect static files
+docker-compose exec web python manage.py collectstatic --noinput
+Then create a superuser to access the Django Admin:
 
-```bash
+Bash
+docker-compose exec web python manage.py createsuperuser
+Quick checklist (new computer, Docker)
+Install Git and Docker (Docker Desktop or Engine + Compose).
+
+git clone https://github.com/yujboss/agrotex.git && cd agrotex
+
+Run the complete setup sequence:
+
+Bash
+docker-compose down -v
+docker-compose up -d --build
+docker cp factory_db_backup.sql agrotex-db-1:/tmp/backup.sql
+docker-compose exec db psql -U factory_admin -d factory_db -f /tmp/backup.sql
 docker-compose exec web python manage.py migrate
-```
+docker-compose exec web python manage.py collectstatic --noinput
+Create admin user: docker-compose exec web python manage.py createsuperuser
 
-Then create a superuser and add workstations, workers, products, and assembly steps via Django Admin.
+Open http://localhost:8000 and http://localhost:8000/admin
 
 ### 4. Create a superuser (first time only)
 
@@ -292,30 +294,3 @@ agrotex/
 
 After importing the backup you’ll have sample workstations, workers, products, and assembly steps. Use the station picker and truck selection to start a run and the station detail / dashboard to use the app.
 
-
-
-### How to Run for the First Time (Quick Setup)
-
-Run these commands sequentially in your terminal from the project root folder:
-
-```bash
-# 1. Stop old containers and remove volumes (if any)
-docker-compose down -v
-
-# 2. Build and start containers in the background
-docker-compose up -d --build
-
-# 3. Copy the database backup file directly into the DB container
-docker cp factory_db_backup.sql agrotex-db-1:/tmp/backup.sql
-
-# 4. Restore the database from the backup
-docker-compose exec db psql -U factory_admin -d factory_db -f /tmp/backup.sql
-
-# 5. Apply Django migrations
-docker-compose exec web python manage.py migrate
-
-# 6. Collect static files (CSS, JS, images)
-docker-compose exec web python manage.py collectstatic --noinput
-
-# 7. Create a superuser (you will need to set a username and password)
-docker-compose exec web python manage.py createsuperuser
