@@ -646,5 +646,67 @@ def report_defect_api(request, slug):
             
         except Exception as e:
             return JsonResponse({"status": "error", "error": str(e)}, status=400)
+# ==========================================
+# НОВАЯ ФУНКЦИЯ ДЛЯ СВЕТОФОРА ARDUINO
+# ==========================================
+def get_station_status(request, station_slug):
+    try:
+        # 1. Ищем станцию по SLUG
+        station = WorkStation.objects.get(slug=station_slug)
+        
+        # 2. Ищем активный трактор на этой станции
+        truck_run = TruckRun.objects.filter(
+            current_station=station.id,
+            is_active=True
+        ).last()
 
+        if not truck_run:
+            # Если трактора нет на станции, светофор выключен
+            return JsonResponse({'station_id': station.id, 'color': 'off'})
 
+        # Если рабочий нажал на дефект / заблокировал сборку
+        if truck_run.status == 'REWORK':
+            # Смело меняем 'red' на 'defect', так как дашборд сюда не смотрит!
+            return JsonResponse({'station_id': station.id, 'color': 'defect'})
+
+        # 3. Ищем АКТИВНУЮ задачу для этого трактора
+        active_task = TaskLog.objects.filter(
+            truck_run=truck_run, 
+            end_time__isnull=True
+        ).first()
+
+        # Если задачи нет (рабочий отдыхает или перекур), выключаем светофор
+        if not active_task:
+            return JsonResponse({'station_id': station.id, 'color': 'off'})
+
+        # 4. Считаем время
+        start_utc = active_task.start_time if active_task.start_time.tzinfo else timezone.make_aware(active_task.start_time)
+        start_utc = start_utc.astimezone(dt_timezone.utc)
+        now_utc = datetime.now(dt_timezone.utc)
+        
+        elapsed_seconds = (now_utc - start_utc).total_seconds()
+        limit_seconds = active_task.assembly_step.standard_duration_seconds or 180
+        
+        # 5. Логика светофора (расчет процентов)
+        if limit_seconds <= 0:
+            color = "green" # Защита от деления на ноль
+        else:
+            progress_percent = (elapsed_seconds / limit_seconds) * 100
+
+            if progress_percent >= 80:
+                color = "red"     # Время вышло, он опаздывает!
+            elif progress_percent >= 50:
+                color = "yellow"  # Прошло 50% времени или больше
+            else:
+                color = "green"   # Прошло меньше 50%, работает быстро
+
+        return JsonResponse({
+            'station_id': station.id,
+            'color': color,
+            'progress': round(progress_percent, 1) # Можно отдавать процент для дебага
+        })
+
+    except WorkStation.DoesNotExist:
+        return JsonResponse({'error': 'Station not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

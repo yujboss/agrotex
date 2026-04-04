@@ -30,4 +30,6 @@ urlpatterns = [
     path('api/station/<slug:station_slug>/take-over/', api.take_over_task_api, name='api_take_over'),
     path('api/station/<slug:station_slug>/reset/', api.reset_truck_api, name='api_reset'),
     path('api/station/<slug:station_slug>/select/', api.select_task_api, name='api_select'),
+    # МАРШРУТ ДЛЯ СВЕТОФОРА ARDUINO
+    path('api/station/<slug:station_slug>/status/', api.get_station_status, name='api_station_status'),
 ]
