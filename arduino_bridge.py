@@ -35,7 +35,7 @@ def main():
         print("=================================================\n")
 
     serial_port = args.port
-    api_url = f'http://127.0.0.1:8000/api/station/{station_slug}/status/'
+    api_url = f'http://agromax.uz/api/station/{station_slug}/status/'
 
     print(f"🔄 Запуск моста для станции «{station_slug}»...")
     
