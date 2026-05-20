@@ -22,6 +22,7 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import TruckRun, Worker, DefectLog, TaskLog
+from django.db import transaction
 # ==========================================
 # НАСТРОЙКА ЛОГГЕРА ДЛЯ FACE ID (AUDIT LOGGING)
 # ==========================================
@@ -532,11 +533,24 @@ def worker_by_badge(request, badge):
     except Worker.DoesNotExist:
 
         return JsonResponse({"error":"not found"})
+
+
+def _warehouse_worker_from_request(request):
+    badge = request.session.get("worker_badge")
+    if not badge:
+        return None
+    return Worker.objects.filter(badge_id=badge, role="WAREHOUSE").first()
     
 
 
 @csrf_exempt
 def create_reorder(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST required"}, status=405)
+
+    if not _warehouse_worker_from_request(request):
+        return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
+
     try:
         data = json.loads(request.body)
         part_code = data.get("part")
@@ -582,6 +596,73 @@ def create_reorder(request):
             "status": "error",
             "message": str(e)
         })
+
+
+@csrf_exempt
+def create_part_inventory(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST required"}, status=405)
+
+    if not _warehouse_worker_from_request(request):
+        return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
+
+    try:
+        data = json.loads(request.body)
+
+        code = (data.get("code") or "").strip()
+        name = (data.get("name") or "").strip()
+        unit = (data.get("unit") or "pcs").strip() or "pcs"
+        location = (data.get("location") or "Main Warehouse").strip() or "Main Warehouse"
+
+        try:
+            quantity = int(data.get("quantity", 0))
+            reorder_level = int(data.get("reorder_level", 10))
+            reorder_quantity = int(data.get("reorder_quantity", 20))
+            low_level = int(data.get("low_level", 5))
+            critical_level = int(data.get("critical_level", 2))
+        except (TypeError, ValueError):
+            return JsonResponse({"status": "error", "message": "Numeric fields must be valid numbers"})
+
+        if not code:
+            return JsonResponse({"status": "error", "message": "Code is required"})
+        if not name:
+            return JsonResponse({"status": "error", "message": "Name is required"})
+        if quantity < 0:
+            return JsonResponse({"status": "error", "message": "Quantity cannot be negative"})
+        if min(reorder_level, reorder_quantity, low_level, critical_level) < 0:
+            return JsonResponse({"status": "error", "message": "Levels cannot be negative"})
+        if critical_level > low_level:
+            return JsonResponse({"status": "error", "message": "Critical level cannot be greater than low level"})
+        if Part.objects.filter(code=code).exists():
+            return JsonResponse({"status": "error", "message": "Part with this code already exists"})
+
+        with transaction.atomic():
+            part = Part.objects.create(
+                code=code,
+                name=name,
+                unit=unit,
+                reorder_level=reorder_level,
+                reorder_quantity=reorder_quantity,
+            )
+            inventory = Inventory.objects.create(
+                part=part,
+                quantity=quantity,
+                location=location,
+                low_level=low_level,
+                critical_level=critical_level,
+            )
+
+        return JsonResponse({
+            "status": "created",
+            "part_id": part.id,
+            "inventory_id": inventory.id,
+            "part": part.code,
+        })
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=400)
     
 
 

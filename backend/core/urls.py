@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/worker/<str:badge>/", worker_by_badge),
     path("warehouse/", views.warehouse_dashboard, name="warehouse"),
     path("api/reorder/", api.create_reorder),
+    path("api/parts/create/", api.create_part_inventory, name="api_create_part_inventory"),
     path("", views.login_page, name="login"),
     path("warehouse/", views.warehouse_dashboard, name="warehouse"),
     path("orders/create/", views.create_production_order),
